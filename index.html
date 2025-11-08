@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>安安的素描本聊天框</title>
+        <style>
+        @font-face {
+            font-family: 'Source Han Sans CN';
+            font-style: normal;
+            font-weight: 400;
+            src: url('https://lf3-cdn-tos.bytecdntp.com/cdn/expire-1-M/source-han-sans-cn/1.002R/SourceHanSansCN-Regular.woff2') format('woff2'),
+                 url('https://lf3-cdn-tos.bytecdntp.com/cdn/expire-1-M/source-han-sans-cn/1.002R/SourceHanSansCN-Regular.woff') format('woff'),
+                 url('https://lf3-cdn-tos.bytecdntp.com/cdn/expire-1-M/source-han-sans-cn/1.002R/SourceHanSansCN-Regular.ttf') format('truetype');
+            font-display: swap;
+        }
+    </style>
+    <link rel="stylesheet" href="css/style.css?ver=2.0">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>安安的素描本聊天框</h1>
+            <p>输入文字或上传图片，来让安安说点什么～</p>
+        </header>
+
+        <div class="main-content">
+            <div class="control-panel">
+                <div class="emotion-selector">
+                    <h3>选择表情</h3>
+                    <div class="emotion-buttons">
+                        <button data-emotion="普通">普通</button>
+                        <button data-emotion="开心">开心</button>
+                        <button data-emotion="生气">生气</button>
+                        <button data-emotion="无语">无语</button>
+                        <button data-emotion="脸红">脸红</button>
+                        <button data-emotion="病娇">病娇</button>
+                    </div>
+                </div>
+
+                <div class="text-input">
+                    <h3>输入文本</h3>
+                    <textarea id="textInput" placeholder="输入想让安安说的话..."></textarea>
+                    <div class="font-size-control">
+                        <label for="fontSize">字体大小：</label>
+                        <input type="range" id="fontSize" min="12" max="60" value="24">
+                        <span id="fontSizeValue">24px</span>
+                    </div>
+                    <p class="hint">提示：使用[]或【】包裹的文字会变成紫色</p>
+                </div>
+
+                <div class="image-upload">
+                    <h3>上传图片</h3>
+                    <label for="imageUpload" class="upload-btn">选择图片</label>
+                    <input type="file" id="imageUpload" accept="image/*" hidden>
+                    <div id="previewImage" class="preview-image"></div>
+                </div>
+
+                <div class="action-buttons">
+                    <button id="downloadBtn">下载图片</button>
+                </div>
+            </div>
+
+            <div class="preview-panel">
+                <h3>预览</h3>
+                <div class="preview-container">
+                    <canvas id="previewCanvas"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <footer>
+            <p>安安的素描本聊天框 Frontend Ver.<br>Designed by ZiAzusa with GPT; Thanks: <a href="https://github.com/MarkCup-Official/Anan-s-Sketchbook-Chat-Box">MarkCup-Official/Anan-s-Sketchbook-Chat-Box</a></p>
+        </footer>
+    </div>
+    <script src="js/main.js?ver=2.0"></script>
+</body>
+</html>

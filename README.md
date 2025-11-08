@@ -1,4 +1,22 @@
-# 安安的素描本聊天框
+# 安安的素描本聊天框 Frontend Ver.
+
+本分支是 <a href="https://github.com/MarkCup-Official/Anan-s-Sketchbook-Chat-Box">MarkCup-Official/Anan-s-Sketchbook-Chat-Box</a> 的前端网页复现，避免了对Python及pywin32的依赖，但需要手动从浏览器下载生成好的图片
+
+## AI声明
+
+本项目90%的代码由AI生成.
+
+## 部署
+
+随便丢到个GitHub Pages或者类似的提供网页托管服务的地方即可
+
+## 使用
+
+浏览器开箱即用
+
+<hr>
+
+**以下是原项目的README**
 
 本项目是一个将你在一个文本输入框中的文字或图片写到安安的素描本上的项目
 
