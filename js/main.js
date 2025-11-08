@@ -16,7 +16,7 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         BASE_OVERLAY_FILE: 'images/base_overlay.png',
         USE_BASE_OVERLAY: true,
-        bracketColor: '#800080',
+        bracketColor: '#6A5ACD',
         textColor: '#000000'
     };
 
