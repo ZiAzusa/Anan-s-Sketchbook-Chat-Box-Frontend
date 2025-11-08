@@ -2,7 +2,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const config = {
         TEXT_BOX_TOPLEFT: [119, 450],
         IMAGE_BOX_BOTTOMRIGHT: [119 + 279, 450 + 175],
-        FONT_FILE: '"Source Han Sans CN", sans-serif',
+        FONT_FILE: {
+            'Source Han Sans CN': '"Source Han Sans CN", sans-serif',
+            'Allseto': '"Allseto", sans-serif'
+        },
         BASEIMAGE_MAPPING: {
             '普通': 'images/base/base.png',
             '开心': 'images/base/开心.png',
@@ -18,6 +21,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     let currentEmotion = '普通';
+    let currentFont = 'Source Han Sans CN';
     let uploadedImage = null;
     let baseImages = {};
     let overlayImage = new Image();
@@ -115,7 +119,12 @@ document.addEventListener('DOMContentLoaded', () => {
             document.querySelectorAll('.emotion-buttons button').forEach(btn => {
                 btn.addEventListener('click', (e) => {
                     setEmotion(e.target.dataset.emotion);
-                    generateImage();
+                });
+            });
+
+            document.querySelectorAll('.font-buttons button').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    setFont(e.target.dataset.font);
                 });
             });
 
@@ -145,6 +154,15 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         canvas.width = baseImages[emotion].width;
         canvas.height = baseImages[emotion].height;
+        generateImage();
+    }
+    
+    function setFont(font) {
+        if (!loadComplete) return;
+        currentFont = font;
+        document.querySelectorAll('.font-buttons button').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.font === font);
+        });
         generateImage();
     }
 
@@ -204,7 +222,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const totalTextHeight = lines.length * lineHeight;
         const yStart = y1 + (regionHeight - totalTextHeight) / 2;
         
-        ctx.font = `${fontSize}px ${config.FONT_FILE}`;
+        ctx.font = `${fontSize}px ${config.FONT_FILE[currentFont]}`;
         ctx.textBaseline = 'top';
         
         lines.forEach((line, index) => {
@@ -262,7 +280,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function wrapText(segments, fontSize, maxWidth, ctx) {
-        ctx.font = `${fontSize}px ${config.FONT_FILE}`;
+        ctx.font = `${fontSize}px ${config.FONT_FILE[currentFont]}`;
         const lines = [];
         let currentLine = [];
         let currentWidth = 0;

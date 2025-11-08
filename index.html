@@ -4,13 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>安安的素描本聊天框</title>
-    <!-- 字体默认使用思源黑体 -->
+    <!-- 引入默认字体 -->
     <style>
         @font-face {
             font-family: 'Source Han Sans CN';
             font-style: normal;
             font-weight: 400;
             src: url('css/SourceHanSansCN-Regular.woff2') format('woff2');
+            font-display: swap;
+        }
+        @font-face {
+            font-family: 'Allseto';
+            font-style: normal;
+            font-weight: 400;
+            src: url('css/Allseto.woff2') format('woff2');
             font-display: swap;
         }
     </style>
@@ -28,12 +35,20 @@
                 <div class="emotion-selector">
                     <h3>选择表情</h3>
                     <div class="emotion-buttons">
-                        <button data-emotion="普通">普通</button>
+                        <button data-emotion="普通" class="active">普通</button>
                         <button data-emotion="开心">开心</button>
                         <button data-emotion="生气">生气</button>
                         <button data-emotion="无语">无语</button>
                         <button data-emotion="脸红">脸红</button>
                         <button data-emotion="病娇">病娇</button>
+                    </div>
+                </div>
+                
+                <div class="font-selector">
+                    <h3>选择字体</h3>
+                    <div class="font-buttons">
+                        <button data-font="Source Han Sans CN" class="active">印刷体</button>
+                        <button data-font="Allseto">手写体</button>
                     </div>
                 </div>
 

@@ -89,8 +89,31 @@ h3 {
     min-width: calc(50% - 4px);
 }
 
+.font-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 15px;
+}
+
+.font-buttons button {
+    background-color: #f0e6d6;
+    border: 1px solid #d9c9b4;
+    border-radius: 5px;
+    padding: 8px 0;
+    cursor: pointer;
+    transition: all 0.3s;
+    font-size: clamp(0.85rem, 2vw, 0.95rem);
+    flex: 1;
+    min-width: calc(50% - 4px);
+}
+
 @media (min-width: 480px) {
     .emotion-buttons button {
+        min-width: calc(33.333% - 5.3px);
+    }
+    
+    .font-buttons button {
         min-width: calc(33.333% - 5.3px);
     }
 }
@@ -99,10 +122,20 @@ h3 {
     .emotion-buttons button {
         min-width: calc(16.666% - 6.7px);
     }
+    
+    .emotion-buttons button {
+        min-width: calc(16.666% - 6.7px);
+    }
 }
 
 .emotion-buttons button:hover,
 .emotion-buttons button.active {
+    background-color: #d9c9b4;
+    color: white;
+}
+
+.font-buttons button:hover,
+.font-buttons button.active {
     background-color: #d9c9b4;
     color: white;
 }
