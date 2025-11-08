@@ -343,36 +343,76 @@ document.addEventListener('DOMContentLoaded', () => {
         link.click();
     }
     
+    canvas.crossOrigin = 'anonymous';
+    canvas.style.webkitTouchCallout = 'default';
+    canvas.style.touchAction = 'manipulation';
+
     document.addEventListener('keydown', (e) => {
-        if (e.ctrlKey && e.key === 'c' && document.activeElement.id !== 'textInput') {
+        const isCopyShortcut = (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'c';
+        if (isCopyShortcut && document.activeElement.id !== 'textInput' && !e.shiftKey && !e.altKey) {
             e.preventDefault();
-            if (!loadComplete) return;
-        
-            if (!baseImages[currentEmotion] || !baseImages[currentEmotion].complete) return;
-            
-            canvas.toBlob(blob => {
-                if (!blob) return;
-                const item = new ClipboardItem({ 'image/png': blob });
-                navigator.clipboard.write([item])
-                    .then(() => {
-                        const notification = document.createElement('div');
-                        notification.textContent = '图片已复制到剪贴板';
-                        notification.style.position = 'fixed';
-                        notification.style.bottom = '20px';
-                        notification.style.left = '50%';
-                        notification.style.transform = 'translateX(-50%)';
-                        notification.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
-                        notification.style.color = 'white';
-                        notification.style.padding = '8px 16px';
-                        notification.style.borderRadius = '4px';
-                        notification.style.zIndex = '10000';
-                        document.body.appendChild(notification);
-                        setTimeout(() => { notification.remove(); }, 2000);
-                    })
-                    .catch(err => { console.error('复制图片失败:', err); });
-            });
+            copyCanvasToClipboard();
         }
     });
+
+    canvas.addEventListener('click', () => {
+        copyCanvasToClipboard();
+    });
+
+    function copyCanvasToClipboard() {
+        if (!loadComplete || !baseImages[currentEmotion]?.complete) return;
+
+        try {
+            const dataURL = canvas.toDataURL('image/png');
+            const blob = dataURLToBlob(dataURL);
+            const item = new ClipboardItem({ 'image/png': blob });
+            navigator.clipboard.write([item])
+                .then(() => {
+                    showNotification('图片已复制到剪贴板');
+                })
+                .catch(err => {
+                    console.error('复制失败:', err);
+                    showNotification(`复制失败：${err}`, true);
+                });
+        } catch (err) {
+            console.error('复制失败:', err);
+            showNotification(`复制失败：${err}`, true);
+        }
+    }
+
+    function dataURLToBlob(dataURL) {
+        const arr = dataURL.split(',');
+        const mime = arr[0].match(/:(.*?);/)[1];
+        const bstr = atob(arr[1]);
+        let n = bstr.length;
+        const u8arr = new Uint8Array(n);
+        while (n--) {
+            u8arr[n] = bstr.charCodeAt(n);
+        }
+        return new Blob([u8arr], { type: mime });
+    }
+
+    function showNotification(text, err=null) {
+        const notification = document.createElement('div');
+        notification.textContent = text;
+        notification.style.position = 'fixed';
+        notification.style.bottom = '50px';
+        notification.style.left = '50%';
+        notification.style.transform = 'translateX(-50%)';
+        notification.style.backgroundColor = err ? 'rgba(255,59,48,0.7)' : 'rgba(0,0,0,0.6)';
+        notification.style.color = 'white';
+        notification.style.padding = '12px 24px';
+        notification.style.borderRadius = '12px';
+        notification.style.zIndex = '999';
+        notification.style.fontSize = '16px';
+        notification.style.boxShadow = '0 4px 16px rgba(0,0,0,0.3)';
+        document.body.appendChild(notification);
+        setTimeout(() => {
+            notification.style.opacity = '0';
+            notification.style.transition = 'opacity 0.3s';
+            setTimeout(() => notification.remove(), 300);
+        }, err ? 3000 : 1000);
+    }
 
     init();
 });
