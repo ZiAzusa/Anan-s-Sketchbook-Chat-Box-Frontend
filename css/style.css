@@ -70,7 +70,8 @@ h3 {
     font-size: clamp(1rem, 3vw, 1.1em);
 }
 
-.emotion-buttons {
+.emotion-buttons,
+.font-buttons {
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
@@ -86,14 +87,7 @@ h3 {
     transition: all 0.3s;
     font-size: clamp(0.85rem, 2vw, 0.95rem);
     flex: 1;
-    min-width: calc(50% - 4px);
-}
-
-.font-buttons {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    margin-bottom: 15px;
+    width: calc(16.667% - 6.7px);
 }
 
 .font-buttons button {
@@ -105,35 +99,11 @@ h3 {
     transition: all 0.3s;
     font-size: clamp(0.85rem, 2vw, 0.95rem);
     flex: 1;
-    min-width: calc(50% - 4px);
-}
-
-@media (min-width: 480px) {
-    .emotion-buttons button {
-        min-width: calc(33.333% - 5.3px);
-    }
-    
-    .font-buttons button {
-        min-width: calc(33.333% - 5.3px);
-    }
-}
-
-@media (min-width: 768px) {
-    .emotion-buttons button {
-        min-width: calc(16.666% - 6.7px);
-    }
-    
-    .emotion-buttons button {
-        min-width: calc(16.666% - 6.7px);
-    }
+    width: calc(50% - 4px);
 }
 
 .emotion-buttons button:hover,
-.emotion-buttons button.active {
-    background-color: #d9c9b4;
-    color: white;
-}
-
+.emotion-buttons button.active,
 .font-buttons button:hover,
 .font-buttons button.active {
     background-color: #d9c9b4;
