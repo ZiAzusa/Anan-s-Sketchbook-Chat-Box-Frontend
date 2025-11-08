@@ -198,10 +198,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const regionHeight = y2 - y1;
 
         const segments = parseColorSegments(text);
-        
         const lineHeight = fontSize * 1.2;
-        
-        const lines = wrapText(segments, fontSize, regionWidth);
+        const lines = wrapText(segments, fontSize, regionWidth, ctx);
         
         const totalTextHeight = lines.length * lineHeight;
         const yStart = y1 + (regionHeight - totalTextHeight) / 2;
@@ -234,61 +232,90 @@ document.addEventListener('DOMContentLoaded', () => {
         const segments = [];
         let inBracket = false;
         let currentText = '';
-        
+
+        if (!text) return segments;
+
         for (const char of text) {
             if (char === '[' || char === '【') {
                 if (currentText) {
-                    segments.push({
-                        text: currentText,
-                        color: inBracket ? config.bracketColor : config.textColor
-                    });
+                    segments.push({ text: currentText, color: config.textColor });
                     currentText = '';
                 }
-                segments.push({ text: char, color: config.bracketColor });
+                currentText += char;
                 inBracket = true;
             } else if (char === ']' || char === '】') {
-                if (currentText) {
-                    segments.push({ text: currentText, color: config.bracketColor });
-                    currentText = '';
-                }
-                segments.push({ text: char, color: config.bracketColor });
+                currentText += char;
+                segments.push({ text: currentText, color: config.bracketColor });
+                currentText = '';
                 inBracket = false;
             } else {
                 currentText += char;
             }
         }
-        
+
         if (currentText) {
-            segments.push({
-                text: currentText,
-                color: inBracket ? config.bracketColor : config.textColor
-            });
+            const color = inBracket ? config.textColor : config.textColor;
+            segments.push({ text: currentText, color });
         }
-        
+
         return segments;
     }
 
-    function wrapText(segments, fontSize, maxWidth) {
+    function wrapText(segments, fontSize, maxWidth, ctx) {
         ctx.font = `${fontSize}px ${config.FONT_FILE}`;
         const lines = [];
         let currentLine = [];
         let currentWidth = 0;
-        
+
+        const splitSingleLongSeg = (seg, remainingWidth) => {
+            const text = seg.text;
+            let start = 0;
+            for (let i = 1; i <= text.length; i++) {
+                const substr = text.slice(start, i);
+                const substrWidth = ctx.measureText(substr).width;
+                if (substrWidth > remainingWidth || i === text.length) {
+                    if (i === 1 && substrWidth > remainingWidth) {
+                        currentLine.push({ ...seg, text: substr });
+                        start = i;
+                        remainingWidth = maxWidth;
+                    } else {
+                        const cutIdx = substrWidth > remainingWidth ? i - 1 : i;
+                        const cutText = text.slice(start, cutIdx);
+                        currentLine.push({ ...seg, text: cutText });
+                        lines.push([...currentLine]);
+                        currentLine = [];
+                        currentWidth = 0;
+                        start = cutIdx;
+                        remainingWidth = maxWidth;
+                        i = cutIdx;
+                    }
+                }
+            }
+        };
+
         segments.forEach(seg => {
             if (seg.text.includes('\n')) {
                 const parts = seg.text.split('\n');
                 parts.forEach((part, i) => {
                     if (part) {
                         const partWidth = ctx.measureText(part).width;
-                        if (currentWidth + partWidth > maxWidth && currentLine.length > 0) {
-                            lines.push([...currentLine]);
-                            currentLine = [];
-                            currentWidth = 0;
+                        if (currentWidth + partWidth > maxWidth) {
+                            if (currentLine.length > 0) {
+                                lines.push([...currentLine]);
+                                currentLine = [];
+                                currentWidth = 0;
+                            }
+                            if (partWidth > maxWidth) {
+                                splitSingleLongSeg({ ...seg, text: part }, maxWidth);
+                            } else {
+                                currentLine.push({ ...seg, text: part });
+                                currentWidth += partWidth;
+                            }
+                        } else {
+                            currentLine.push({ ...seg, text: part });
+                            currentWidth += partWidth;
                         }
-                        currentLine.push({ ...seg, text: part });
-                        currentWidth += partWidth;
                     }
-                    
                     if (i < parts.length - 1) {
                         lines.push([...currentLine]);
                         currentLine = [];
@@ -297,20 +324,29 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
             } else {
                 const segWidth = ctx.measureText(seg.text).width;
-                if (currentWidth + segWidth > maxWidth && currentLine.length > 0) {
-                    lines.push([...currentLine]);
-                    currentLine = [];
-                    currentWidth = 0;
+                if (currentWidth + segWidth > maxWidth) {
+                    if (currentLine.length > 0) {
+                        lines.push([...currentLine]);
+                        currentLine = [];
+                        currentWidth = 0;
+                    }
+                    if (segWidth > maxWidth) {
+                        splitSingleLongSeg(seg, maxWidth);
+                    } else {
+                        currentLine.push(seg);
+                        currentWidth += segWidth;
+                    }
+                } else {
+                    currentLine.push(seg);
+                    currentWidth += segWidth;
                 }
-                currentLine.push(seg);
-                currentWidth += segWidth;
             }
         });
-        
+
         if (currentLine.length > 0) {
             lines.push(currentLine);
         }
-        
+
         return lines;
     }
 
