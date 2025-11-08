@@ -342,6 +342,37 @@ document.addEventListener('DOMContentLoaded', () => {
         link.href = canvas.toDataURL('image/png');
         link.click();
     }
+    
+    document.addEventListener('keydown', (e) => {
+        if (e.ctrlKey && e.key === 'c' && document.activeElement.id !== 'textInput') {
+            e.preventDefault();
+            if (!loadComplete) return;
+        
+            if (!baseImages[currentEmotion] || !baseImages[currentEmotion].complete) return;
+            
+            canvas.toBlob(blob => {
+                if (!blob) return;
+                const item = new ClipboardItem({ 'image/png': blob });
+                navigator.clipboard.write([item])
+                    .then(() => {
+                        const notification = document.createElement('div');
+                        notification.textContent = '图片已复制到剪贴板';
+                        notification.style.position = 'fixed';
+                        notification.style.bottom = '20px';
+                        notification.style.left = '50%';
+                        notification.style.transform = 'translateX(-50%)';
+                        notification.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+                        notification.style.color = 'white';
+                        notification.style.padding = '8px 16px';
+                        notification.style.borderRadius = '4px';
+                        notification.style.zIndex = '10000';
+                        document.body.appendChild(notification);
+                        setTimeout(() => { notification.remove(); }, 2000);
+                    })
+                    .catch(err => { console.error('复制图片失败:', err); });
+            });
+        }
+    });
 
     init();
 });

@@ -2,6 +2,8 @@
 
 本分支是 <a href="https://github.com/MarkCup-Official/Anan-s-Sketchbook-Chat-Box">MarkCup-Official/Anan-s-Sketchbook-Chat-Box</a> 的前端网页复现，避免了对Python及pywin32的依赖，但需要手动从浏览器下载生成好的图片
 
+添加了在电脑端按下Ctrl+C即可将生成的安安复制到剪贴板的功能
+
 ## AI声明
 
 本项目90%的代码由AI生成
