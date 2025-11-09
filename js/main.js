@@ -142,6 +142,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 generateImage();
             });
 
+            document.getElementById('uploadBtnLabel').addEventListener('click', handleUploadButtonClick);
             document.getElementById('downloadBtn').addEventListener('click', downloadImage);
         });
     }
@@ -166,6 +167,13 @@ document.addEventListener('DOMContentLoaded', () => {
         generateImage();
     }
 
+    function handleUploadButtonClick(e) {
+        if (uploadedImage) {
+            e.preventDefault();
+            removeImage();
+        }
+    }
+
     function handleImageUpload(e) {
         if (!loadComplete) return;
         const file = e.target.files[0];
@@ -180,10 +188,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 previewContainer.innerHTML = `<img src="${event.target.result}" alt="预览图">`;
                 previewContainer.style.display = 'block';
                 generateImage();
+                document.getElementById('uploadBtnLabel').textContent = '删除图片';
             };
             img.src = event.target.result;
         };
         reader.readAsDataURL(file);
+        document.getElementById('imageUpload').value = '';
+    }
+
+    function removeImage() {
+        uploadedImage = null;
+        const previewContainer = document.getElementById('previewImage');
+        previewContainer.innerHTML = '';
+        previewContainer.style.display = 'none';
+        generateImage();
+        document.getElementById('uploadBtnLabel').textContent = '选择图片';
     }
 
     function drawBaseImage() {
