@@ -4,26 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>安安的素描本聊天框</title>
-    <!-- 引入默认字体 -->
-    <style>
-        @font-face {
-            font-family: 'Source Han Sans CN';
-            font-style: normal;
-            font-weight: 400;
-            src: url('css/SourceHanSansCN-Regular.woff2') format('woff2');
-            font-display: swap;
-        }
-        @font-face {
-            font-family: 'Allseto';
-            font-style: normal;
-            font-weight: 400;
-            src: url('css/Allseto.woff2') format('woff2');
-            font-display: swap;
-        }
-    </style>
-    <link rel="stylesheet" href="css/style.css?ver=2.0">
+    <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
+    <div id="progressContainer">
+        <div id="progressBar"></div>
+    </div>
     <div class="container">
         <header>
             <h1>安安的素描本聊天框</h1>
@@ -34,33 +20,22 @@
             <div class="control-panel">
                 <div class="emotion-selector">
                     <h3>选择表情</h3>
-                    <div class="emotion-buttons">
-                        <button data-emotion="普通" class="active">普通</button>
-                        <button data-emotion="开心">开心</button>
-                        <button data-emotion="生气">生气</button>
-                        <button data-emotion="无语">无语</button>
-                        <button data-emotion="脸红">脸红</button>
-                        <button data-emotion="病娇">病娇</button>
-                    </div>
+                    <div class="emotion-buttons" id="emotionButtonsContainer"></div>
                 </div>
                 
                 <div class="font-selector">
                     <h3>选择字体</h3>
-                    <div class="font-buttons">
-                        <button data-font="Source Han Sans CN" class="active">印刷体（思源）</button>
-                        <button data-font="Allseto">手写体（全濑）</button>
-                    </div>
-                    <p class="hint">字体加载需要一些时间，如果并非预期的字体可以多试几次</p>
+                    <div class="font-buttons" id="fontButtonsContainer"></div>
                     <div class="font-size-control">
                         <label for="fontSize">字体大小：</label>
-                        <input type="range" id="fontSize" min="12" max="60" value="24">
-                        <span id="fontSizeValue">24px</span>
+                        <input type="range" id="fontSize" min="12" max="72" value="32">
+                        <span id="fontSizeValue">32px</span>
                     </div>
                 </div>
 
                 <div class="text-input">
                     <h3>输入文本</h3>
-                    <textarea id="textInput" placeholder="输入想让安安说的话..."></textarea>
+                    <textarea id="textInput" placeholder="输入想让安安说点什么..."></textarea>
                     <p class="hint">使用[]或【】包裹的文字会变成紫色～</p>
                 </div>
 
@@ -89,6 +64,6 @@
             <p>安安的素描本聊天框 Frontend Ver.<br>Designed by ZiAzusa with GPT; Thanks: <a href="https://github.com/MarkCup-Official/Anan-s-Sketchbook-Chat-Box">MarkCup-Official/Anan-s-Sketchbook-Chat-Box</a></p>
         </footer>
     </div>
-    <script src="js/main.js?ver=2.0"></script>
+    <script src="js/main.js"></script>
 </body>
 </html>

@@ -1,25 +1,33 @@
-document.addEventListener('DOMContentLoaded', () => {
-    const config = {
-        TEXT_BOX_TOPLEFT: [119, 450],
-        IMAGE_BOX_BOTTOMRIGHT: [119 + 279, 450 + 175],
-        FONT_FILE: {
-            'Source Han Sans CN': '"Source Han Sans CN", sans-serif',
-            'Allseto': '"Allseto", sans-serif'
+const config = {
+    TEXT_BOX_TOPLEFT: [119, 450],
+    IMAGE_BOX_BOTTOMRIGHT: [119 + 279, 450 + 175],
+    FONT_FILE: {
+        'Source Han Sans CN': {
+            family: '"Source Han Sans CN", sans-serif',
+            file: 'css/SourceHanSansCN-Regular.woff2',
+            displayText: '印刷体（思源）'
         },
-        BASEIMAGE_MAPPING: {
-            '普通': 'images/base/base.png',
-            '开心': 'images/base/开心.png',
-            '生气': 'images/base/生气.png',
-            '无语': 'images/base/无语.png',
-            '脸红': 'images/base/脸红.png',
-            '病娇': 'images/base/病娇.png'
-        },
-        BASE_OVERLAY_FILE: 'images/base_overlay.png',
-        USE_BASE_OVERLAY: true,
-        bracketColor: '#6A5ACD',
-        textColor: '#000000'
-    };
+        'Allseto': {
+            family: '"Allseto", sans-serif',
+            file: 'css/Allseto.woff2',
+            displayText: '手写体（全濑）'
+        }
+    },
+    BASEIMAGE_MAPPING: {
+        '普通': 'images/base/base.png',
+        '开心': 'images/base/开心.png',
+        '生气': 'images/base/生气.png',
+        '无语': 'images/base/无语.png',
+        '脸红': 'images/base/脸红.png',
+        '病娇': 'images/base/病娇.png'
+    },
+    BASE_OVERLAY_FILE: 'images/base_overlay.png',
+    USE_BASE_OVERLAY: true,
+    bracketColor: '#6a5acd',
+    textColor: '#000000'
+};
 
+document.addEventListener('DOMContentLoaded', () => {
     let currentEmotion = '普通';
     let currentFont = 'Source Han Sans CN';
     let uploadedImage = null;
@@ -29,28 +37,26 @@ document.addEventListener('DOMContentLoaded', () => {
     let ctx = canvas.getContext('2d');
     let currentFontSize = 18;
     let loadComplete = false;
+    const progressContainer = document.getElementById('progressContainer');
+    const progressBar = document.getElementById('progressBar');
+    const emotionButtonsContainer = document.getElementById('emotionButtonsContainer');
+    const fontButtonsContainer = document.getElementById('fontButtonsContainer');
+    const totalResources = Object.keys(config.BASEIMAGE_MAPPING).length + 1 + Object.keys(config.FONT_FILE).length;
+    let loadedResources = 0;
 
     function createLoadingOverlay() {
+        progressContainer.style.display = 'block';
         const overlay = document.createElement('div');
         overlay.id = 'loadingOverlay';
-        overlay.style.position = 'fixed';
-        overlay.style.top = '0';
-        overlay.style.left = '0';
-        overlay.style.width = '100%';
-        overlay.style.height = '100%';
-        overlay.style.backgroundColor = 'rgba(255, 255, 255, 0.8)';
-        overlay.style.display = 'flex';
-        overlay.style.alignItems = 'center';
-        overlay.style.justifyContent = 'center';
-        overlay.style.zIndex = '9999';
-        overlay.style.fontSize = '1.2rem';
-        overlay.style.color = '#8b5a2b';
-        overlay.textContent = '请等待加载完成...';
+        overlay.innerHTML = `
+            <div>请等待加载完成...</div>
+            <div>加载进度: <span id="progressText">0%</span></div>
+        `;
         document.body.appendChild(overlay);
     }
 
     function disableControls() {
-        document.querySelectorAll('.emotion-buttons button').forEach(btn => {
+        document.querySelectorAll('.emotion-buttons button, .font-buttons button').forEach(btn => {
             btn.disabled = true;
             btn.style.opacity = '0.5';
             btn.style.cursor = 'not-allowed';
@@ -64,7 +70,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function enableControls() {
-        document.querySelectorAll('.emotion-buttons button').forEach(btn => {
+        progressContainer.style.display = 'none';
+        document.querySelectorAll('.emotion-buttons button, .font-buttons button').forEach(btn => {
             btn.disabled = false;
             btn.style.opacity = '1';
             btn.style.cursor = 'pointer';
@@ -77,6 +84,47 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('downloadBtn').style.opacity = '1';
     }
 
+    function updateProgress() {
+        const progress = Math.round((loadedResources / totalResources) * 100);
+        progressBar.style.width = `${progress}%`;
+        document.getElementById('progressText').textContent = `${progress}%`;
+
+        if (progress === 100) {
+            setTimeout(() => {
+                progressContainer.style.display = 'none';
+            }, 500);
+        }
+    }
+
+    function generateEmotionButtons() {
+        emotionButtonsContainer.innerHTML = '';
+        Object.keys(config.BASEIMAGE_MAPPING).forEach(emotion => {
+            const button = document.createElement('button');
+            button.dataset.emotion = emotion;
+            button.textContent = emotion;
+            if (emotion === currentEmotion) {
+                button.classList.add('active');
+            }
+            button.addEventListener('click', (e) => setEmotion(e.target.dataset.emotion));
+            emotionButtonsContainer.appendChild(button);
+        });
+    }
+
+    function generateFontButtons() {
+        fontButtonsContainer.innerHTML = '';
+        Object.keys(config.FONT_FILE).forEach(fontKey => {
+            const fontInfo = config.FONT_FILE[fontKey];
+            const button = document.createElement('button');
+            button.dataset.font = fontKey;
+            button.textContent = fontInfo.displayText;
+            if (fontKey === currentFont) {
+                button.classList.add('active');
+            }
+            button.addEventListener('click', (e) => setFont(e.target.dataset.font));
+            fontButtonsContainer.appendChild(button);
+        });
+    }
+
     function preloadAllImages() {
         return new Promise((resolve) => {
             const imagePaths = Object.values(config.BASEIMAGE_MAPPING);
@@ -86,9 +134,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
             imagePaths.forEach(path => {
                 const img = new Image();
-                img.src = path;
+                img.crossOrigin = 'anonymous';
+                if (Object.prototype.toString.call(config.BASEIMAGE_MAPPING[currentEmotion]) !== '[object String]') {
+                    img.src = path.PATH;
+                } else {
+                    img.src = path;
+                }
                 img.onload = () => {
                     loaded++;
+                    loadedResources++;
+                    updateProgress();
                     if (path === config.BASE_OVERLAY_FILE) {
                         overlayImage = img;
                     } else {
@@ -103,11 +158,94 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    function preloadAllFonts() {
+        return new Promise((resolve) => {
+            const fontPromises = [];
+            Object.keys(config.FONT_FILE).forEach(fontKey => {
+                const fontInfo = config.FONT_FILE[fontKey];
+                const fontFace = new FontFace(fontKey, `url(${fontInfo.file})`, {
+                    style: 'normal',
+                    weight: '400'
+                });
+                fontFace.load().then(() => {
+                    document.fonts.add(fontFace);
+                    loadedResources++;
+                    updateProgress();
+                }).catch(() => {
+                    loadedResources++;
+                    updateProgress();
+                });
+                fontPromises.push(fontFace.load());
+            });
+            Promise.allSettled(fontPromises).then(resolve);
+        });
+    }
+    function updatefontSizeCtrl(target) {
+        const min = parseInt(target.min);
+        const max = parseInt(target.max);
+        const current = parseInt(target.value);
+        const progress = ((current - min) / (max - min)) * 100;
+        target.style.setProperty('--progress', `${progress}%`);
+    }
+
+    function showNotification(message, type = 'default') {
+        const existing = document.querySelector('.notification');
+        if (existing) existing.remove();
+
+        const notification = document.createElement('div');
+        notification.className = `notification ${type}`;
+        notification.textContent = message;
+        document.body.appendChild(notification);
+
+        setTimeout(() => notification.classList.add('show'), 10);
+        setTimeout(() => {
+            notification.classList.remove('show');
+            setTimeout(() => notification.remove(), 300);
+        }, 1000);
+    }
+
+    function copyCanvasToClipboard() {
+        if (!loadComplete || !baseImages[currentEmotion]?.complete) return;
+        try {
+            const dataURL = canvas.toDataURL('image/png');
+            const blob = dataURLToBlob(dataURL);
+            const item = new ClipboardItem({ 'image/png': blob });
+            navigator.clipboard.write([item])
+                .then(() => {
+                    showNotification('图片已复制到剪贴板');
+                })
+                .catch(err => {
+                    console.error('复制失败:', err);
+                    showNotification(`复制失败：${err}`, 'error');
+                });
+        } catch (err) {
+            console.error('复制失败:', err);
+            showNotification(`复制失败：${err}`, 'error');
+        }
+    }
+
+    function dataURLToBlob(dataURL) {
+        const arr = dataURL.split(',');
+        const mime = arr[0].match(/:(.*?);/)[1];
+        const bstr = atob(arr[1]);
+        let n = bstr.length;
+        const u8arr = new Uint8Array(n);
+        while (n--) {
+            u8arr[n] = bstr.charCodeAt(n);
+        }
+        return new Blob([u8arr], { type: mime });
+    }
+
     function init() {
         createLoadingOverlay();
         disableControls();
 
-        preloadAllImages().then(() => {
+        Promise.all([
+            preloadAllImages(),
+            preloadAllFonts()
+        ]).then(() => {
+            generateEmotionButtons();
+            generateFontButtons();
             loadComplete = true;
             document.getElementById('loadingOverlay').remove();
             enableControls();
@@ -116,34 +254,34 @@ document.addEventListener('DOMContentLoaded', () => {
             canvas.height = baseImages[currentEmotion].height;
             drawBaseImage();
 
-            document.querySelectorAll('.emotion-buttons button').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    setEmotion(e.target.dataset.emotion);
-                });
-            });
-
-            document.querySelectorAll('.font-buttons button').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    setFont(e.target.dataset.font);
-                });
-            });
-
             document.getElementById('textInput').addEventListener('input', generateImage);
-            
-            document.getElementById('imageUpload').addEventListener('change', (e) => {
-                handleImageUpload(e);
-            });
-
+            document.getElementById('imageUpload').addEventListener('change', (e) => handleImageUpload(e));
             const fontSizeCtrl = document.getElementById('fontSize');
             const fontSizeValue = document.getElementById('fontSizeValue');
             fontSizeCtrl.addEventListener('input', (e) => {
                 currentFontSize = parseInt(e.target.value);
                 fontSizeValue.textContent = `${currentFontSize}px`;
+                updatefontSizeCtrl(e.target);
                 generateImage();
             });
+            updatefontSizeCtrl(fontSizeCtrl);
 
             document.getElementById('uploadBtnLabel').addEventListener('click', handleUploadButtonClick);
             document.getElementById('downloadBtn').addEventListener('click', downloadImage);
+            canvas.crossOrigin = 'anonymous';
+            canvas.style.webkitTouchCallout = 'default';
+            canvas.style.touchAction = 'manipulation';
+            document.addEventListener('keydown', (e) => {
+                const isCopyShortcut = (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'c';
+                if (isCopyShortcut && document.activeElement.id !== 'textInput' && !e.shiftKey && !e.altKey) {
+                    e.preventDefault();
+                    copyCanvasToClipboard();
+                }
+            });
+
+            canvas.addEventListener('click', () => {
+                copyCanvasToClipboard();
+            });
         });
     }
 
@@ -157,7 +295,7 @@ document.addEventListener('DOMContentLoaded', () => {
         canvas.height = baseImages[emotion].height;
         generateImage();
     }
-    
+
     function setFont(font) {
         if (!loadComplete) return;
         currentFont = font;
@@ -182,6 +320,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const reader = new FileReader();
         reader.onload = (event) => {
             const img = new Image();
+            img.crossOrigin = 'anonymous';
             img.onload = () => {
                 uploadedImage = img;
                 const previewContainer = document.getElementById('previewImage');
@@ -214,49 +353,52 @@ document.addEventListener('DOMContentLoaded', () => {
     function generateImage() {
         if (!loadComplete) return;
         const text = document.getElementById('textInput').value.trim();
-        
+
         drawBaseImage();
-        
+
         if (uploadedImage) {
             pasteImageAuto(uploadedImage);
         } else if (text) {
             drawTextWithFontSize(text, currentFontSize);
         }
-        
+
         if (config.USE_BASE_OVERLAY && overlayImage.complete) {
             ctx.drawImage(overlayImage, 0, 0);
         }
     }
 
     function drawTextWithFontSize(text, fontSize) {
-        const [x1, y1] = config.TEXT_BOX_TOPLEFT;
-        const [x2, y2] = config.IMAGE_BOX_BOTTOMRIGHT;
+        let x1, y1, x2, y2;
+        if (Object.prototype.toString.call(config.BASEIMAGE_MAPPING[currentEmotion]) !== '[object String]') {
+            [x1, y1] = config.BASEIMAGE_MAPPING[currentEmotion].TEXT_BOX_TOPLEFT;
+            [x2, y2] = config.BASEIMAGE_MAPPING[currentEmotion].IMAGE_BOX_BOTTOMRIGHT;
+        } else {
+            [x1, y1] = config.TEXT_BOX_TOPLEFT;
+            [x2, y2] = config.IMAGE_BOX_BOTTOMRIGHT;
+        }
+
         const regionWidth = x2 - x1;
         const regionHeight = y2 - y1;
-
         const segments = parseColorSegments(text);
         const lineHeight = fontSize * 1.2;
         const lines = wrapText(segments, fontSize, regionWidth, ctx);
-        
         const totalTextHeight = lines.length * lineHeight;
         const yStart = y1 + (regionHeight - totalTextHeight) / 2;
-        
-        ctx.font = `${fontSize}px ${config.FONT_FILE[currentFont]}`;
+        ctx.font = `${fontSize}px ${config.FONT_FILE[currentFont].family}`;
         ctx.textBaseline = 'top';
-        
+
         lines.forEach((line, index) => {
             let x = x1;
             const y = yStart + index * lineHeight;
-            
             let lineWidth = 0;
             line.forEach(seg => {
                 lineWidth += ctx.measureText(seg.text).width;
             });
-            
+
             if (lineWidth < regionWidth) {
                 x += (regionWidth - lineWidth) / 2;
             }
-            
+
             line.forEach(seg => {
                 ctx.fillStyle = seg.color;
                 ctx.fillText(seg.text, x, y);
@@ -299,7 +441,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function wrapText(segments, fontSize, maxWidth, ctx) {
-        ctx.font = `${fontSize}px ${config.FONT_FILE[currentFont]}`;
+        ctx.font = `${fontSize}px ${config.FONT_FILE[currentFont].family}`;
         const lines = [];
         let currentLine = [];
         let currentWidth = 0;
@@ -387,104 +529,51 @@ document.addEventListener('DOMContentLoaded', () => {
         return lines;
     }
 
-    function pasteImageAuto(contentImage) {
-        const [x1, y1] = config.TEXT_BOX_TOPLEFT;
-        const [x2, y2] = config.IMAGE_BOX_BOTTOMRIGHT;
-        const padding = 12;
-        
-        const regionWidth = (x2 - x1) - 2 * padding;
-        const regionHeight = (y2 - y1) - 2 * padding;
-        
-        const scaleWidth = regionWidth / contentImage.width;
-        const scaleHeight = regionHeight / contentImage.height;
-        const scale = Math.min(scaleWidth, scaleHeight, 1);
-        
-        const newWidth = Math.max(1, Math.round(contentImage.width * scale));
-        const newHeight = Math.max(1, Math.round(contentImage.height * scale));
-        const x = x1 + padding + (regionWidth - newWidth) / 2;
-        const y = y1 + padding + (regionHeight - newHeight) / 2;
-        
-        ctx.drawImage(contentImage, x, y, newWidth, newHeight);
+    function pasteImageAuto(img) {
+        let x1, y1, x2, y2;
+        if (Object.prototype.toString.call(config.BASEIMAGE_MAPPING[currentEmotion]) !== '[object String]') {
+            [x1, y1] = config.BASEIMAGE_MAPPING[currentEmotion].TEXT_BOX_TOPLEFT;
+            [x2, y2] = config.BASEIMAGE_MAPPING[currentEmotion].IMAGE_BOX_BOTTOMRIGHT;
+        } else {
+            [x1, y1] = config.TEXT_BOX_TOPLEFT;
+            [x2, y2] = config.IMAGE_BOX_BOTTOMRIGHT;
+        }
+
+        const maxWidth = x2 - x1;
+        const maxHeight = y2 - y1;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > maxWidth) {
+            const ratio = maxWidth / width;
+            width = maxWidth;
+            height = height * ratio;
+        }
+
+        if (height > maxHeight) {
+            const ratio = maxHeight / height;
+            height = maxHeight;
+            width = width * ratio;
+        }
+
+        const x = x1 + (maxWidth - width) / 2;
+        const y = y1 + (maxHeight - height) / 2;
+
+        ctx.drawImage(img, x, y, width, height);
     }
 
     function downloadImage() {
-        if (!loadComplete || canvas.width === 0 || canvas.height === 0) return;
-        
-        const link = document.createElement('a');
-        link.download = '安安的素描本.png';
-        link.href = canvas.toDataURL('image/png');
-        link.click();
-    }
-    
-    canvas.crossOrigin = 'anonymous';
-    canvas.style.webkitTouchCallout = 'default';
-    canvas.style.touchAction = 'manipulation';
-
-    document.addEventListener('keydown', (e) => {
-        const isCopyShortcut = (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'c';
-        if (isCopyShortcut && document.activeElement.id !== 'textInput' && !e.shiftKey && !e.altKey) {
-            e.preventDefault();
-            copyCanvasToClipboard();
-        }
-    });
-
-    canvas.addEventListener('click', () => {
-        copyCanvasToClipboard();
-    });
-
-    function copyCanvasToClipboard() {
-        if (!loadComplete || !baseImages[currentEmotion]?.complete) return;
-
-        try {
-            const dataURL = canvas.toDataURL('image/png');
-            const blob = dataURLToBlob(dataURL);
-            const item = new ClipboardItem({ 'image/png': blob });
-            navigator.clipboard.write([item])
-                .then(() => {
-                    showNotification('图片已复制到剪贴板');
-                })
-                .catch(err => {
-                    console.error('复制失败:', err);
-                    showNotification(`复制失败：${err}`, true);
-                });
-        } catch (err) {
-            console.error('复制失败:', err);
-            showNotification(`复制失败：${err}`, true);
-        }
-    }
-
-    function dataURLToBlob(dataURL) {
-        const arr = dataURL.split(',');
-        const mime = arr[0].match(/:(.*?);/)[1];
-        const bstr = atob(arr[1]);
-        let n = bstr.length;
-        const u8arr = new Uint8Array(n);
-        while (n--) {
-            u8arr[n] = bstr.charCodeAt(n);
-        }
-        return new Blob([u8arr], { type: mime });
-    }
-
-    function showNotification(text, err=null) {
-        const notification = document.createElement('div');
-        notification.textContent = text;
-        notification.style.position = 'fixed';
-        notification.style.bottom = '50px';
-        notification.style.left = '50%';
-        notification.style.transform = 'translateX(-50%)';
-        notification.style.backgroundColor = err ? 'rgba(255,59,48,0.7)' : 'rgba(0,0,0,0.6)';
-        notification.style.color = 'white';
-        notification.style.padding = '12px 24px';
-        notification.style.borderRadius = '12px';
-        notification.style.zIndex = '999';
-        notification.style.fontSize = '16px';
-        notification.style.boxShadow = '0 4px 16px rgba(0,0,0,0.3)';
-        document.body.appendChild(notification);
-        setTimeout(() => {
-            notification.style.opacity = '0';
-            notification.style.transition = 'opacity 0.3s';
-            setTimeout(() => notification.remove(), 300);
-        }, err ? 3000 : 1000);
+        if (!loadComplete) return;
+        canvas.toBlob(blob => {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = '安安的素描本.png';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        });
     }
 
     init();
