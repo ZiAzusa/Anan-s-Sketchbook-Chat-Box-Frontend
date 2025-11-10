@@ -35,25 +35,15 @@ document.addEventListener('DOMContentLoaded', () => {
     let overlayImage = new Image();
     let canvas = document.getElementById('previewCanvas');
     let ctx = canvas.getContext('2d');
-    let currentFontSize = 18;
+    let currentFontSize = 32;
     let loadComplete = false;
     const progressContainer = document.getElementById('progressContainer');
     const progressBar = document.getElementById('progressBar');
+    const loadingOverlay = document.getElementById('loadingOverlay');
     const emotionButtonsContainer = document.getElementById('emotionButtonsContainer');
     const fontButtonsContainer = document.getElementById('fontButtonsContainer');
     const totalResources = Object.keys(config.BASEIMAGE_MAPPING).length + 1 + Object.keys(config.FONT_FILE).length;
     let loadedResources = 0;
-
-    function createLoadingOverlay() {
-        progressContainer.style.display = 'block';
-        const overlay = document.createElement('div');
-        overlay.id = 'loadingOverlay';
-        overlay.innerHTML = `
-            <div>请等待加载完成...</div>
-            <div>加载进度: <span id="progressText">0%</span></div>
-        `;
-        document.body.appendChild(overlay);
-    }
 
     function disableControls() {
         document.querySelectorAll('.emotion-buttons button, .font-buttons button').forEach(btn => {
@@ -88,7 +78,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const progress = Math.round((loadedResources / totalResources) * 100);
         progressBar.style.width = `${progress}%`;
         document.getElementById('progressText').textContent = `${progress}%`;
-
         if (progress === 100) {
             setTimeout(() => {
                 progressContainer.style.display = 'none';
@@ -237,8 +226,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function init() {
-        createLoadingOverlay();
         disableControls();
+        const fontSizeCtrl = document.getElementById('fontSize');
+        const fontSizeValue = document.getElementById('fontSizeValue');
+        updatefontSizeCtrl(fontSizeCtrl);
+
+        loadingOverlay.style.display = 'block';
+        progressContainer.style.display = 'block';;
 
         Promise.all([
             preloadAllImages(),
@@ -256,21 +250,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
             document.getElementById('textInput').addEventListener('input', generateImage);
             document.getElementById('imageUpload').addEventListener('change', (e) => handleImageUpload(e));
-            const fontSizeCtrl = document.getElementById('fontSize');
-            const fontSizeValue = document.getElementById('fontSizeValue');
+            document.getElementById('uploadBtnLabel').addEventListener('click', handleUploadButtonClick);
+            document.getElementById('downloadBtn').addEventListener('click', downloadImage);
+            canvas.crossOrigin = 'anonymous';
+            canvas.style.webkitTouchCallout = 'default';
+            canvas.style.touchAction = 'manipulation';
+
             fontSizeCtrl.addEventListener('input', (e) => {
                 currentFontSize = parseInt(e.target.value);
                 fontSizeValue.textContent = `${currentFontSize}px`;
                 updatefontSizeCtrl(e.target);
                 generateImage();
             });
-            updatefontSizeCtrl(fontSizeCtrl);
 
-            document.getElementById('uploadBtnLabel').addEventListener('click', handleUploadButtonClick);
-            document.getElementById('downloadBtn').addEventListener('click', downloadImage);
-            canvas.crossOrigin = 'anonymous';
-            canvas.style.webkitTouchCallout = 'default';
-            canvas.style.touchAction = 'manipulation';
             document.addEventListener('keydown', (e) => {
                 const isCopyShortcut = (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'c';
                 if (isCopyShortcut && document.activeElement.id !== 'textInput' && !e.shiftKey && !e.altKey) {
