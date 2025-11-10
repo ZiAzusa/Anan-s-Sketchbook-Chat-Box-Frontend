@@ -37,6 +37,15 @@ document.addEventListener('DOMContentLoaded', () => {
     let ctx = canvas.getContext('2d');
     let currentFontSize = 32;
     let loadComplete = false;
+    let gifState = {
+        file: null,
+        frames: null,
+        currentIndex: 0,
+        timer: null,
+        width: 0,
+        height: 0,
+        loopCount: null
+    };
     const progressContainer = document.getElementById('progressContainer');
     const progressBar = document.getElementById('progressBar');
     const loadingOverlay = document.getElementById('loadingOverlay');
@@ -80,9 +89,7 @@ document.addEventListener('DOMContentLoaded', () => {
         progressBar.style.width = `${progress}%`;
         document.getElementById('progressText').textContent = `${progress}%`;
         if (progress === 100) {
-            setTimeout(() => {
-                progressContainer.style.display = 'none';
-            }, 500);
+            setTimeout(() => progressContainer.style.display = 'none', 500);
         }
     }
 
@@ -92,9 +99,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const button = document.createElement('button');
             button.dataset.emotion = emotion;
             button.textContent = emotion;
-            if (emotion === currentEmotion) {
-                button.classList.add('active');
-            }
+            button.classList.toggle('active', emotion === currentEmotion);
             button.addEventListener('click', (e) => setEmotion(e.target.dataset.emotion));
             emotionButtonsContainer.appendChild(button);
         });
@@ -107,9 +112,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const button = document.createElement('button');
             button.dataset.font = fontKey;
             button.textContent = fontInfo.displayText;
-            if (fontKey === currentFont) {
-                button.classList.add('active');
-            }
+            button.classList.toggle('active', fontKey === currentFont);
             button.addEventListener('click', (e) => setFont(e.target.dataset.font));
             fontButtonsContainer.appendChild(button);
         });
@@ -117,19 +120,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function preloadAllImages() {
         return new Promise((resolve) => {
-            const imagePaths = Object.values(config.BASEIMAGE_MAPPING);
-            imagePaths.push(config.BASE_OVERLAY_FILE);
-            const total = imagePaths.length;
+            const imagePaths = [...Object.values(config.BASEIMAGE_MAPPING), config.BASE_OVERLAY_FILE];
             let loaded = 0;
 
             imagePaths.forEach(path => {
                 const img = new Image();
                 img.crossOrigin = 'anonymous';
-                if (Object.prototype.toString.call(config.BASEIMAGE_MAPPING[currentEmotion]) !== '[object String]') {
-                    img.src = path.PATH;
-                } else {
-                    img.src = path;
-                }
+                img.src = typeof path === 'object' ? path.PATH : path;
                 img.onload = () => {
                     loaded++;
                     loadedResources++;
@@ -137,12 +134,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (path === config.BASE_OVERLAY_FILE) {
                         overlayImage = img;
                     } else {
-                        const emotion = Object.keys(config.BASEIMAGE_MAPPING).find(key => 
-                            config.BASEIMAGE_MAPPING[key] === path
-                        );
+                        const emotion = Object.keys(config.BASEIMAGE_MAPPING).find(key => config.BASEIMAGE_MAPPING[key] === path);
                         if (emotion) baseImages[emotion] = img;
                     }
-                    if (loaded >= total) resolve();
+                    if (loaded >= imagePaths.length) resolve();
                 };
             });
         });
@@ -150,68 +145,38 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function preloadAllFonts() {
         return new Promise((resolve) => {
-            const fontPromises = [];
-            Object.keys(config.FONT_FILE).forEach(fontKey => {
+            const fontPromises = Object.keys(config.FONT_FILE).map(fontKey => {
                 const fontInfo = config.FONT_FILE[fontKey];
-                const fontFace = new FontFace(fontKey, `url(${fontInfo.file})`, {
-                    style: 'normal',
-                    weight: '400'
-                });
-                fontFace.load().then(() => {
-                    document.fonts.add(fontFace);
-                    loadedResources++;
-                    updateProgress();
-                }).catch(() => {
+                const fontFace = new FontFace(fontKey, `url(${fontInfo.file})`, { style: 'normal', weight: '400' });
+                return fontFace.load()
+                .then(() => document.fonts.add(fontFace))
+                .finally(() => {
                     loadedResources++;
                     updateProgress();
                 });
-                fontPromises.push(fontFace.load());
             });
             Promise.allSettled(fontPromises).then(resolve);
         });
     }
+
     function updatefontSizeCtrl(target) {
         const min = parseInt(target.min);
         const max = parseInt(target.max);
         const current = parseInt(target.value);
-        const progress = ((current - min) / (max - min)) * 100;
-        target.style.setProperty('--progress', `${progress}%`);
+        target.style.setProperty('--progress', `${((current - min) / (max - min)) * 100}%`);
     }
 
     function showNotification(message, type = 'default') {
-        const existing = document.querySelector('.notification');
-        if (existing) existing.remove();
-
+        document.querySelector('.notification')?.remove();
         const notification = document.createElement('div');
         notification.className = `notification ${type}`;
         notification.textContent = message;
         document.body.appendChild(notification);
-
         setTimeout(() => notification.classList.add('show'), 10);
         setTimeout(() => {
             notification.classList.remove('show');
             setTimeout(() => notification.remove(), 300);
         }, 1000);
-    }
-
-    function copyCanvasToClipboard() {
-        if (!loadComplete || !baseImages[currentEmotion]?.complete) return;
-        try {
-            const dataURL = canvas.toDataURL('image/png');
-            const blob = dataURLToBlob(dataURL);
-            const item = new ClipboardItem({ 'image/png': blob });
-            navigator.clipboard.write([item])
-                .then(() => {
-                    showNotification('图片已复制到剪贴板');
-                })
-                .catch(err => {
-                    console.error('复制失败:', err);
-                    showNotification(`复制失败：${err}`, 'error');
-                });
-        } catch (err) {
-            console.error('复制失败:', err);
-            showNotification(`复制失败：${err}`, 'error');
-        }
     }
 
     function dataURLToBlob(dataURL) {
@@ -220,59 +185,257 @@ document.addEventListener('DOMContentLoaded', () => {
         const bstr = atob(arr[1]);
         let n = bstr.length;
         const u8arr = new Uint8Array(n);
-        while (n--) {
-            u8arr[n] = bstr.charCodeAt(n);
-        }
+        while (n--) u8arr[n] = bstr.charCodeAt(n);
         return new Blob([u8arr], { type: mime });
     }
 
-    function init() {
-        disableControls();
-        const fontSizeCtrl = document.getElementById('fontSize');
-        const fontSizeValue = document.getElementById('fontSizeValue');
-        progressContainer.style.display = 'block';
-        updatefontSizeCtrl(fontSizeCtrl);
+    function getBoxCoordinates() {
+        const baseConfig = config.BASEIMAGE_MAPPING[currentEmotion];
+        if (typeof baseConfig !== 'string') {
+            return {
+                topLeft: baseConfig.TEXT_BOX_TOPLEFT,
+                bottomRight: baseConfig.IMAGE_BOX_BOTTOMRIGHT
+            };
+        }
+        return {
+            topLeft: config.TEXT_BOX_TOPLEFT,
+            bottomRight: config.IMAGE_BOX_BOTTOMRIGHT
+        };
+    }
 
-        Promise.all([
-            preloadAllImages(),
-            preloadAllFonts()
-        ]).then(() => {
-            generateEmotionButtons();
-            generateFontButtons();
-            loadComplete = true;
-            enableControls();
+    function stopGifAnimation() {
+        if (gifState.timer) {
+            clearTimeout(gifState.timer);
+            gifState.timer = null;
+        }
+        gifState = { ...gifState, file: null, frames: null, currentIndex: 0 };
+    }
 
-            canvas.width = baseImages[currentEmotion].width;
-            canvas.height = baseImages[currentEmotion].height;
-            drawBaseImage();
+    function startGifAnimation() {
+        if (!gifState.frames || !gifState.frames.length) return;
+        const animate = () => {
+            gifState.currentIndex = (gifState.currentIndex + 1) % gifState.frames.length;
+            generateImage();
+            const delay = gifState.frames[gifState.currentIndex].delay || 100;
+            gifState.timer = setTimeout(animate, delay);
+        };
+        generateImage();
+        gifState.timer = setTimeout(animate, gifState.frames[0].delay || 100);
+    }
 
-            document.getElementById('textInput').addEventListener('input', generateImage);
-            document.getElementById('imageUpload').addEventListener('change', (e) => handleImageUpload(e));
-            document.getElementById('uploadBtnLabel').addEventListener('click', handleUploadButtonClick);
-            document.getElementById('downloadBtn').addEventListener('click', downloadImage);
-            canvas.crossOrigin = 'anonymous';
-            canvas.style.webkitTouchCallout = 'default';
-            canvas.style.touchAction = 'manipulation';
+    function drawGifFrame() {
+        if (!gifState.frames) return;
+        const { topLeft: [x1, y1], bottomRight: [x2, y2] } = getBoxCoordinates();
+        const frame = gifState.frames[gifState.currentIndex];
+        const maxWidth = x2 - x1;
+        const maxHeight = y2 - y1;
+        let width = frame.dims.width;
+        let height = frame.dims.height;
+        if (width > maxWidth) {
+            const ratio = maxWidth / width;
+            width = maxWidth;
+            height = height * ratio;
+        }
+        if (height > maxHeight) {
+            const ratio = maxHeight / height;
+            height = maxHeight;
+            width = width * ratio;
+        }
+        const x = x1 + (maxWidth - width) / 2;
+        const y = y1 + (maxHeight - height) / 2;
+        ctx.drawImage(frame.bitmap, x, y, width, height);
+    }
 
-            fontSizeCtrl.addEventListener('input', (e) => {
-                currentFontSize = parseInt(e.target.value);
-                fontSizeValue.textContent = `${currentFontSize}px`;
-                updatefontSizeCtrl(e.target);
-                generateImage();
+    function composeGifBlob() {
+        return new Promise((resolve, reject) => {
+            const gif = new window.GIF({
+                workers: 2,
+                quality: 10,
+                width: canvas.width,
+                height: canvas.height,
+                workerScript: 'js/gif/gif.worker.js'
             });
+            const originalIndex = gifState.currentIndex;
 
-            document.addEventListener('keydown', (e) => {
-                const isCopyShortcut = (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'c';
-                if (isCopyShortcut && document.activeElement.id !== 'textInput' && !e.shiftKey && !e.altKey) {
-                    e.preventDefault();
-                    copyCanvasToClipboard();
+            (async () => {
+                for (let i = 0; i < gifState.frames.length; i++) {
+                    drawBaseImage();
+                    gifState.currentIndex = i;
+                    drawGifFrame();
+                    if (config.USE_BASE_OVERLAY && overlayImage.complete) ctx.drawImage(overlayImage, 0, 0);
+                    gif.addFrame(canvas, { copy: true, delay: gifState.frames[i].delay || 100 });
+                    await new Promise(r => setTimeout(r, 0));
                 }
-            });
+                gifState.currentIndex = originalIndex;
+                gif.on('finished', resolve);
+                gif.on('abort', () => reject(new Error('GIF编码被中止')));
+                gif.render();
+            })();
+        });
+    }
 
-            canvas.addEventListener('click', () => {
-                copyCanvasToClipboard();
+    function drawBaseImage() {
+        if (!loadComplete || !baseImages[currentEmotion]?.complete) return;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(baseImages[currentEmotion], 0, 0);
+    }
+
+    function pasteImageAuto(img) {
+        const { topLeft: [x1, y1], bottomRight: [x2, y2] } = getBoxCoordinates();
+        const maxWidth = x2 - x1;
+        const maxHeight = y2 - y1;
+        let width = img.width;
+        let height = img.height;
+        if (width > maxWidth) {
+            const ratio = maxWidth / width;
+            width = maxWidth;
+            height = height * ratio;
+        }
+        if (height > maxHeight) {
+            const ratio = maxHeight / height;
+            height = maxHeight;
+            width = width * ratio;
+        }
+        const x = x1 + (maxWidth - width) / 2;
+        const y = y1 + (maxHeight - height) / 2;
+        ctx.drawImage(img, x, y, width, height);
+    }
+
+    function generateImage() {
+        if (!loadComplete) return;
+        const text = document.getElementById('textInput').value.trim();
+        drawBaseImage();
+        if (gifState.frames) {
+            drawGifFrame();
+        } else if (uploadedImage) {
+            pasteImageAuto(uploadedImage);
+        } else if (text) {
+            drawTextWithFontSize(text, currentFontSize);
+        }
+        if (config.USE_BASE_OVERLAY && overlayImage.complete) ctx.drawImage(overlayImage, 0, 0);
+    }
+
+    function drawTextWithFontSize(text, fontSize) {
+        const { topLeft: [x1, y1], bottomRight: [x2, y2] } = getBoxCoordinates();
+        const regionWidth = x2 - x1;
+        const regionHeight = y2 - y1;
+        const segments = parseColorSegments(text);
+        const lineHeight = fontSize * 1.2;
+        const lines = wrapText(segments, fontSize, regionWidth, ctx);
+        const totalTextHeight = lines.length * lineHeight;
+        const yStart = y1 + (regionHeight - totalTextHeight) / 2;
+        ctx.font = `${fontSize}px ${config.FONT_FILE[currentFont].family}`;
+        ctx.textBaseline = 'top';
+
+        lines.forEach((line, index) => {
+            let x = x1;
+            const y = yStart + index * lineHeight;
+            const lineWidth = line.reduce((sum, seg) => sum + ctx.measureText(seg.text).width, 0);
+            if (lineWidth < regionWidth) x += (regionWidth - lineWidth) / 2;
+            line.forEach(seg => {
+                ctx.fillStyle = seg.color;
+                ctx.fillText(seg.text, x, y);
+                x += ctx.measureText(seg.text).width;
             });
         });
+    }
+
+    function parseColorSegments(text) {
+        const segments = [];
+        let inBracket = false;
+        let currentText = '';
+        if (!text) return segments;
+        for (const char of text) {
+            if (char === '[' || char === '【') {
+                if (currentText) {
+                    segments.push({ text: currentText, color: config.textColor });
+                    currentText = '';
+                }
+                currentText += char;
+                inBracket = true;
+            } else if (char === ']' || char === '】') {
+                currentText += char;
+                segments.push({ text: currentText, color: config.bracketColor });
+                currentText = '';
+                inBracket = false;
+            } else {
+                currentText += char;
+            }
+        }
+        if (currentText) segments.push({ text: currentText, color: config.textColor });
+        return segments;
+    }
+
+    function wrapText(segments, fontSize, maxWidth, ctx) {
+        ctx.font = `${fontSize}px ${config.FONT_FILE[currentFont].family}`;
+        const lines = [];
+        let currentLine = [];
+        let currentWidth = 0;
+        const splitSingleLongSeg = (seg, remainingWidth) => {
+            const text = seg.text;
+            let start = 0;
+            for (let i = 1; i <= text.length; i++) {
+                const substr = text.slice(start, i);
+                const substrWidth = ctx.measureText(substr).width;
+                if (substrWidth > remainingWidth || i === text.length) {
+                    const cutIdx = substrWidth > remainingWidth ? i - 1 : i;
+                    const cutText = text.slice(start, cutIdx);
+                    currentLine.push({ ...seg, text: cutText });
+                    lines.push([...currentLine]);
+                    currentLine = [];
+                    currentWidth = 0;
+                    start = cutIdx;
+                    remainingWidth = maxWidth;
+                    i = cutIdx;
+                }
+            }
+        };
+
+        segments.forEach(seg => {
+            if (seg.text.includes('\n')) {
+                const parts = seg.text.split('\n');
+                parts.forEach((part, i) => {
+                    if (part) {
+                        const partWidth = ctx.measureText(part).width;
+                        if (currentWidth + partWidth > maxWidth) {
+                            if (currentLine.length) {
+                                lines.push([...currentLine]);
+                                currentLine = [];
+                                currentWidth = 0;
+                            }
+                            partWidth > maxWidth 
+                                ? splitSingleLongSeg({ ...seg, text: part }, maxWidth)
+                                : (currentLine.push({ ...seg, text: part }), currentWidth += partWidth);
+                        } else {
+                            currentLine.push({ ...seg, text: part });
+                            currentWidth += partWidth;
+                        }
+                    }
+                    if (i < parts.length - 1) {
+                        lines.push([...currentLine]);
+                        currentLine = [];
+                        currentWidth = 0;
+                    }
+                });
+            } else {
+                const segWidth = ctx.measureText(seg.text).width;
+                if (currentWidth + segWidth > maxWidth) {
+                    if (currentLine.length) {
+                        lines.push([...currentLine]);
+                        currentLine = [];
+                        currentWidth = 0;
+                    }
+                    segWidth > maxWidth 
+                        ? splitSingleLongSeg(seg, maxWidth)
+                        : (currentLine.push(seg), currentWidth += segWidth);
+                } else {
+                    currentLine.push(seg);
+                    currentWidth += segWidth;
+                }
+            }
+        });
+        if (currentLine.length) lines.push(currentLine);
+        return lines;
     }
 
     function setEmotion(emotion) {
@@ -296,7 +459,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function handleUploadButtonClick(e) {
-        if (uploadedImage) {
+        if (uploadedImage || gifState.file) {
             e.preventDefault();
             removeImage();
         }
@@ -306,6 +469,48 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!loadComplete) return;
         const file = e.target.files[0];
         if (!file) return;
+        const isGif = file.type === 'image/gif' || file.name.toLowerCase().endsWith('.gif');
+        const GifReaderCtor = window.GifReader || (window.omggif && window.omggif.GifReader);
+
+        if (isGif && GifReaderCtor) {
+            stopGifAnimation();
+            const reader = new FileReader();
+            reader.onload = async (event) => {
+                const arrayBuffer = event.target.result;
+                const uint8 = new Uint8Array(arrayBuffer);
+                const gifReader = new GifReaderCtor(uint8);
+                const framesCount = gifReader.numFrames();
+                const frames = [];
+                for (let i = 0; i < framesCount; i++) {
+                    const info = gifReader.frameInfo(i);
+                    const pixels = new Uint8Array(gifReader.width * gifReader.height * 4);
+                    gifReader.decodeAndBlitFrameRGBA(i, pixels);
+                    const imgData = new ImageData(new Uint8ClampedArray(pixels.buffer), gifReader.width, gifReader.height);
+                    const bitmap = await createImageBitmap(imgData);
+                    frames.push({
+                        bitmap,
+                        delay: (info.delay > 0 ? info.delay : 10) * 10, // 转换为ms
+                        dims: { width: gifReader.width, height: gifReader.height }
+                    });
+                }
+                gifState = {
+                    file: new Blob([arrayBuffer], { type: 'image/gif' }),
+                    frames,
+                    currentIndex: 0,
+                    timer: null,
+                    width: gifReader.width,
+                    height: gifReader.height,
+                    loopCount: null
+                };
+                const previewContainer = document.getElementById('previewImage');
+                previewContainer.innerHTML = `<img src="${URL.createObjectURL(gifState.file)}" alt="预览图">`;
+                previewContainer.style.display = 'block';
+                document.getElementById('uploadBtnLabel').textContent = '删除图片';
+                startGifAnimation();
+            };
+            reader.readAsArrayBuffer(file);
+            return;
+        }
 
         const reader = new FileReader();
         reader.onload = (event) => {
@@ -326,6 +531,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function removeImage() {
+        stopGifAnimation();
         uploadedImage = null;
         const previewContainer = document.getElementById('previewImage');
         previewContainer.innerHTML = '';
@@ -334,226 +540,46 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('uploadBtnLabel').textContent = '选择图片';
     }
 
-    function drawBaseImage() {
-        if (!loadComplete || !baseImages[currentEmotion].complete) return;
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.drawImage(baseImages[currentEmotion], 0, 0);
-    }
-
-    function generateImage() {
-        if (!loadComplete) return;
-        const text = document.getElementById('textInput').value.trim();
-
-        drawBaseImage();
-
-        if (uploadedImage) {
-            pasteImageAuto(uploadedImage);
-        } else if (text) {
-            drawTextWithFontSize(text, currentFontSize);
-        }
-
-        if (config.USE_BASE_OVERLAY && overlayImage.complete) {
-            ctx.drawImage(overlayImage, 0, 0);
-        }
-    }
-
-    function drawTextWithFontSize(text, fontSize) {
-        let x1, y1, x2, y2;
-        if (Object.prototype.toString.call(config.BASEIMAGE_MAPPING[currentEmotion]) !== '[object String]') {
-            [x1, y1] = config.BASEIMAGE_MAPPING[currentEmotion].TEXT_BOX_TOPLEFT;
-            [x2, y2] = config.BASEIMAGE_MAPPING[currentEmotion].IMAGE_BOX_BOTTOMRIGHT;
-        } else {
-            [x1, y1] = config.TEXT_BOX_TOPLEFT;
-            [x2, y2] = config.IMAGE_BOX_BOTTOMRIGHT;
-        }
-
-        const regionWidth = x2 - x1;
-        const regionHeight = y2 - y1;
-        const segments = parseColorSegments(text);
-        const lineHeight = fontSize * 1.2;
-        const lines = wrapText(segments, fontSize, regionWidth, ctx);
-        const totalTextHeight = lines.length * lineHeight;
-        const yStart = y1 + (regionHeight - totalTextHeight) / 2;
-        ctx.font = `${fontSize}px ${config.FONT_FILE[currentFont].family}`;
-        ctx.textBaseline = 'top';
-
-        lines.forEach((line, index) => {
-            let x = x1;
-            const y = yStart + index * lineHeight;
-            let lineWidth = 0;
-            line.forEach(seg => {
-                lineWidth += ctx.measureText(seg.text).width;
-            });
-
-            if (lineWidth < regionWidth) {
-                x += (regionWidth - lineWidth) / 2;
+    function copyCanvasToClipboard() {
+        if (!loadComplete || !baseImages[currentEmotion]?.complete) return;
+        try {
+            if (gifState.frames) {
+                composeGifBlob()
+                .then(blob => {
+                    const item = new ClipboardItem({ [blob.type || 'image/gif']: blob });
+                    return navigator.clipboard.write([item]);
+                })
+                .then(() => showNotification('动图已复制到剪贴板'))
+                .catch(err => showNotification(`复制失败: ${err}`, 'error'));
+                return;
             }
-
-            line.forEach(seg => {
-                ctx.fillStyle = seg.color;
-                ctx.fillText(seg.text, x, y);
-                x += ctx.measureText(seg.text).width;
-            });
-        });
-    }
-
-    function parseColorSegments(text) {
-        const segments = [];
-        let inBracket = false;
-        let currentText = '';
-
-        if (!text) return segments;
-
-        for (const char of text) {
-            if (char === '[' || char === '【') {
-                if (currentText) {
-                    segments.push({ text: currentText, color: config.textColor });
-                    currentText = '';
-                }
-                currentText += char;
-                inBracket = true;
-            } else if (char === ']' || char === '】') {
-                currentText += char;
-                segments.push({ text: currentText, color: config.bracketColor });
-                currentText = '';
-                inBracket = false;
-            } else {
-                currentText += char;
-            }
+            const dataURL = canvas.toDataURL('image/png');
+            const blob = dataURLToBlob(dataURL);
+            const item = new ClipboardItem({ 'image/png': blob });
+            navigator.clipboard.write([item])
+            .then(() => showNotification('图片已复制到剪贴板'))
+            .catch(err => showNotification(`复制失败: ${err}`, 'error'));
+        } catch (err) {
+            showNotification(`复制失败: ${err}`, 'error');
         }
-
-        if (currentText) {
-            const color = inBracket ? config.textColor : config.textColor;
-            segments.push({ text: currentText, color });
-        }
-
-        return segments;
-    }
-
-    function wrapText(segments, fontSize, maxWidth, ctx) {
-        ctx.font = `${fontSize}px ${config.FONT_FILE[currentFont].family}`;
-        const lines = [];
-        let currentLine = [];
-        let currentWidth = 0;
-
-        const splitSingleLongSeg = (seg, remainingWidth) => {
-            const text = seg.text;
-            let start = 0;
-            for (let i = 1; i <= text.length; i++) {
-                const substr = text.slice(start, i);
-                const substrWidth = ctx.measureText(substr).width;
-                if (substrWidth > remainingWidth || i === text.length) {
-                    if (i === 1 && substrWidth > remainingWidth) {
-                        currentLine.push({ ...seg, text: substr });
-                        start = i;
-                        remainingWidth = maxWidth;
-                    } else {
-                        const cutIdx = substrWidth > remainingWidth ? i - 1 : i;
-                        const cutText = text.slice(start, cutIdx);
-                        currentLine.push({ ...seg, text: cutText });
-                        lines.push([...currentLine]);
-                        currentLine = [];
-                        currentWidth = 0;
-                        start = cutIdx;
-                        remainingWidth = maxWidth;
-                        i = cutIdx;
-                    }
-                }
-            }
-        };
-
-        segments.forEach(seg => {
-            if (seg.text.includes('\n')) {
-                const parts = seg.text.split('\n');
-                parts.forEach((part, i) => {
-                    if (part) {
-                        const partWidth = ctx.measureText(part).width;
-                        if (currentWidth + partWidth > maxWidth) {
-                            if (currentLine.length > 0) {
-                                lines.push([...currentLine]);
-                                currentLine = [];
-                                currentWidth = 0;
-                            }
-                            if (partWidth > maxWidth) {
-                                splitSingleLongSeg({ ...seg, text: part }, maxWidth);
-                            } else {
-                                currentLine.push({ ...seg, text: part });
-                                currentWidth += partWidth;
-                            }
-                        } else {
-                            currentLine.push({ ...seg, text: part });
-                            currentWidth += partWidth;
-                        }
-                    }
-                    if (i < parts.length - 1) {
-                        lines.push([...currentLine]);
-                        currentLine = [];
-                        currentWidth = 0;
-                    }
-                });
-            } else {
-                const segWidth = ctx.measureText(seg.text).width;
-                if (currentWidth + segWidth > maxWidth) {
-                    if (currentLine.length > 0) {
-                        lines.push([...currentLine]);
-                        currentLine = [];
-                        currentWidth = 0;
-                    }
-                    if (segWidth > maxWidth) {
-                        splitSingleLongSeg(seg, maxWidth);
-                    } else {
-                        currentLine.push(seg);
-                        currentWidth += segWidth;
-                    }
-                } else {
-                    currentLine.push(seg);
-                    currentWidth += segWidth;
-                }
-            }
-        });
-
-        if (currentLine.length > 0) {
-            lines.push(currentLine);
-        }
-
-        return lines;
-    }
-
-    function pasteImageAuto(img) {
-        let x1, y1, x2, y2;
-        if (Object.prototype.toString.call(config.BASEIMAGE_MAPPING[currentEmotion]) !== '[object String]') {
-            [x1, y1] = config.BASEIMAGE_MAPPING[currentEmotion].TEXT_BOX_TOPLEFT;
-            [x2, y2] = config.BASEIMAGE_MAPPING[currentEmotion].IMAGE_BOX_BOTTOMRIGHT;
-        } else {
-            [x1, y1] = config.TEXT_BOX_TOPLEFT;
-            [x2, y2] = config.IMAGE_BOX_BOTTOMRIGHT;
-        }
-
-        const maxWidth = x2 - x1;
-        const maxHeight = y2 - y1;
-        let width = img.width;
-        let height = img.height;
-
-        if (width > maxWidth) {
-            const ratio = maxWidth / width;
-            width = maxWidth;
-            height = height * ratio;
-        }
-
-        if (height > maxHeight) {
-            const ratio = maxHeight / height;
-            height = maxHeight;
-            width = width * ratio;
-        }
-
-        const x = x1 + (maxWidth - width) / 2;
-        const y = y1 + (maxHeight - height) / 2;
-
-        ctx.drawImage(img, x, y, width, height);
     }
 
     function downloadImage() {
         if (!loadComplete) return;
+        if (gifState.frames) {
+            composeGifBlob()
+            .then(blob => {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = '安安的素描本.gif';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            });
+            return;
+        }
         canvas.toBlob(blob => {
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
@@ -563,6 +589,46 @@ document.addEventListener('DOMContentLoaded', () => {
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
+        });
+    }
+
+    function init() {
+        disableControls();
+        const fontSizeCtrl = document.getElementById('fontSize');
+        const fontSizeValue = document.getElementById('fontSizeValue');
+        progressContainer.style.display = 'block';
+        updatefontSizeCtrl(fontSizeCtrl);
+
+        Promise.all([preloadAllImages(), preloadAllFonts()])
+        .then(() => {
+            generateEmotionButtons();
+            generateFontButtons();
+            loadComplete = true;
+            enableControls();
+            canvas.width = baseImages[currentEmotion].width;
+            canvas.height = baseImages[currentEmotion].height;
+            drawBaseImage();
+            document.getElementById('textInput').addEventListener('input', generateImage);
+            document.getElementById('imageUpload').addEventListener('change', handleImageUpload);
+            document.getElementById('uploadBtnLabel').addEventListener('click', handleUploadButtonClick);
+            document.getElementById('downloadBtn').addEventListener('click', downloadImage);
+            canvas.crossOrigin = 'anonymous';
+            canvas.style.webkitTouchCallout = 'default';
+            canvas.style.touchAction = 'manipulation';
+            fontSizeCtrl.addEventListener('input', (e) => {
+                currentFontSize = parseInt(e.target.value);
+                fontSizeValue.textContent = `${currentFontSize}px`;
+                updatefontSizeCtrl(e.target);
+                generateImage();
+            });
+            document.addEventListener('keydown', (e) => {
+                if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'c' && 
+                    document.activeElement.id !== 'textInput' && !e.shiftKey && !e.altKey) {
+                    e.preventDefault();
+                    copyCanvasToClipboard();
+                }
+            });
+            canvas.addEventListener('click', copyCanvasToClipboard);
         });
     }
 
