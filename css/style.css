@@ -1,3 +1,19 @@
+@font-face {
+    font-family: 'Source Han Sans CN';
+    font-style: normal;
+    font-weight: 400;
+    src: url('css/SourceHanSansCN-Regular.woff2') format('woff2');
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Allseto';
+    font-style: normal;
+    font-weight: 400;
+    src: url('css/Allseto.woff2') format('woff2');
+    font-display: swap;
+}
+
 * {
     box-sizing: border-box;
     margin: 0;
