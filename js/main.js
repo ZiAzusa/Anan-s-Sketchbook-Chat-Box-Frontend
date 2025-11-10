@@ -578,7 +578,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     const item = new ClipboardItem({ 'image/png': blob });
                     return navigator.clipboard.write([item]);
                 })
-                .then(() => showNotification('图片已复制到剪贴板'));
+                .then(() => showNotification('图片已复制到剪贴板'))
+                .catch(err => showNotification(`复制失败: ${err}`, 'error'));
                 return;
             }
             const dataURL = canvas.toDataURL('image/png');
