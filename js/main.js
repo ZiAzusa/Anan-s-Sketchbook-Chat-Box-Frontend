@@ -61,7 +61,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function enableControls() {
         progressContainer.style.display = 'none';
-        document.getElementById('loadingOverlay').style.display = 'none';
+        loadingOverlay.style.display = 'none';
         document.querySelectorAll('.emotion-buttons button, .font-buttons button').forEach(btn => {
             btn.disabled = false;
             btn.style.opacity = '1';
