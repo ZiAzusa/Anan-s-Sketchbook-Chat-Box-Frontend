@@ -229,10 +229,8 @@ document.addEventListener('DOMContentLoaded', () => {
         disableControls();
         const fontSizeCtrl = document.getElementById('fontSize');
         const fontSizeValue = document.getElementById('fontSizeValue');
+        progressContainer.style.display = 'block';
         updatefontSizeCtrl(fontSizeCtrl);
-
-        loadingOverlay.style.display = 'block';
-        progressContainer.style.display = 'block';;
 
         Promise.all([
             preloadAllImages(),
