@@ -552,12 +552,12 @@ document.addEventListener('DOMContentLoaded', () => {
     function pauseClipboardToCanvas() {
         if (!loadComplete) return;
         navigator.clipboard.read()
-        .then(clipboardData => {
+        .then(async clipboardData => {
             if (clipboardData.length <= 0) return;
             const lastItem = clipboardData[clipboardData.length - 1];
             const imageTypes = lastItem.types.filter(type => type.startsWith('image/'));
             if (imageTypes.length <= 0) return;
-            const blob = lastItem.getType(imageTypes[0]);
+            const blob = await lastItem.getType(imageTypes[0]);
             if (!blob) return;
             const file = new File([blob], `pasted-image.${imageTypes[0].split('/')[1] || 'png'}`, { type: blob.type });
             const dt = new DataTransfer();
