@@ -1,33 +1,25 @@
-const config = {
-    TEXT_BOX_TOPLEFT: [119, 450],
-    IMAGE_BOX_BOTTOMRIGHT: [119 + 279, 450 + 175],
-    FONT_FILE: {
-        'Source Han Sans CN': {
-            family: '"Source Han Sans CN", sans-serif',
-            file: 'css/SourceHanSansCN-Regular.woff2',
-            displayText: '印刷体（思源）'
-        },
-        'Allseto': {
-            family: '"Allseto", sans-serif',
-            file: 'css/Allseto.woff2',
-            displayText: '手写体（全濑）'
-        }
-    },
-    BASEIMAGE_MAPPING: {
-        '普通': 'images/base/base.png',
-        '开心': 'images/base/开心.png',
-        '生气': 'images/base/生气.png',
-        '无语': 'images/base/无语.png',
-        '脸红': 'images/base/脸红.png',
-        '病娇': 'images/base/病娇.png'
-    },
-    BASE_OVERLAY_FILE: 'images/base_overlay.png',
-    USE_BASE_OVERLAY: true,
-    bracketColor: '#6a5acd',
-    textColor: '#000000'
-}
-
 document.addEventListener('DOMContentLoaded', () => {
+    const runtimeCfg = window.APP_CONFIG || {
+        DEFAULT: {
+            TEXT_BOX_TOPLEFT: [119, 450],
+            IMAGE_BOX_BOTTOMRIGHT: [119 + 279, 450 + 175],
+            TEXT_COLOR: '#000000',
+            BRACKET_COLOR: '#6a5acd',
+            USE_BASE_OVERLAY: true,
+            BASE_OVERLAY_FILE: 'images/base_overlay.png'
+        },
+        FONT_FILE: {
+            'Source Han Sans CN': {
+                family: '"Source Han Sans CN", sans-serif',
+                file: 'css/SourceHanSansCN-Regular.woff2',
+                displayText: '印刷体（思源）'
+            }
+        },
+        BASEIMAGE_MAPPING: {
+            '普通': 'images/base/base.png'
+        }
+    }
+    const totalResources = Object.keys(runtimeCfg.BASEIMAGE_MAPPING).length + 1 + Object.keys(runtimeCfg.FONT_FILE).length;
     let currentEmotion = '普通';
     let currentFont = 'Source Han Sans CN';
     let uploadedImage = null;
@@ -52,8 +44,25 @@ document.addEventListener('DOMContentLoaded', () => {
     const emotionButtonsContainer = document.getElementById('emotionButtonsContainer');
     const fontButtonsContainer = document.getElementById('fontButtonsContainer');
     const imageUploadInput = document.getElementById('imageUpload');
-    const totalResources = Object.keys(config.BASEIMAGE_MAPPING).length + 1 + Object.keys(config.FONT_FILE).length;
     let loadedResources = 0;
+
+    function getEmotionCfg(emotionName) {
+        const entry = runtimeCfg.BASEIMAGE_MAPPING[emotionName];
+        if (typeof entry === 'string') {
+            const cfg = Object.create(runtimeCfg.DEFAULT);
+            return { PATH: entry, config: cfg };
+        }
+        if (entry && typeof entry === 'object') {
+            const path = entry.PATH || entry.path || '';
+            const merged = Object.create(runtimeCfg.DEFAULT);
+            Object.keys(entry).forEach(k => {
+                if (k === 'PATH' || k === 'path') return;
+                merged[k] = entry[k];
+            });
+            return { PATH: path, config: merged };
+        }
+        return { PATH: '', config: Object.create(runtimeCfg.DEFAULT) };
+    }
 
     function disableControls() {
         document.querySelectorAll('.emotion-buttons button, .font-buttons button').forEach(btn => {
@@ -96,7 +105,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function generateEmotionButtons() {
         emotionButtonsContainer.innerHTML = '';
-        Object.keys(config.BASEIMAGE_MAPPING).forEach(emotion => {
+        Object.keys(runtimeCfg.BASEIMAGE_MAPPING).forEach(emotion => {
             const button = document.createElement('button');
             button.dataset.emotion = emotion;
             button.textContent = emotion;
@@ -108,8 +117,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function generateFontButtons() {
         fontButtonsContainer.innerHTML = '';
-        Object.keys(config.FONT_FILE).forEach(fontKey => {
-            const fontInfo = config.FONT_FILE[fontKey];
+        Object.keys(runtimeCfg.FONT_FILE).forEach(fontKey => {
+            const fontInfo = runtimeCfg.FONT_FILE[fontKey];
             const button = document.createElement('button');
             button.dataset.font = fontKey;
             button.textContent = fontInfo.displayText;
@@ -121,20 +130,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function preloadAllImages() {
         return new Promise((resolve) => {
-            const imagePaths = [...Object.values(config.BASEIMAGE_MAPPING), config.BASE_OVERLAY_FILE];
+            const emotions = Object.keys(runtimeCfg.BASEIMAGE_MAPPING);
+            const pathMap = {};
+            const imagePaths = [];
+            emotions.forEach(em => {
+                const { PATH } = getEmotionCfg(em);
+                pathMap[PATH] = em;
+                imagePaths.push(PATH);
+            });
+            imagePaths.push(runtimeCfg.DEFAULT.BASE_OVERLAY_FILE);
+
             let loaded = 0;
             imagePaths.forEach(path => {
                 const img = new Image();
                 img.crossOrigin = 'anonymous';
-                img.src = typeof path === 'object' ? path.PATH : path;
+                img.src = path;
                 img.onload = () => {
                     loaded++;
                     loadedResources++;
                     updateProgress();
-                    if (path === config.BASE_OVERLAY_FILE) {
+                    if (path === runtimeCfg.DEFAULT.BASE_OVERLAY_FILE) {
                         overlayImage = img;
                     } else {
-                        const emotion = Object.keys(config.BASEIMAGE_MAPPING).find(key => config.BASEIMAGE_MAPPING[key] === path);
+                        const emotion = pathMap[path];
                         if (emotion) baseImages[emotion] = img;
                     }
                     if (loaded >= imagePaths.length) resolve();
@@ -145,15 +163,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function preloadAllFonts() {
         return new Promise((resolve) => {
-            const fontPromises = Object.keys(config.FONT_FILE).map(fontKey => {
-                const fontInfo = config.FONT_FILE[fontKey];
+            const fontPromises = Object.keys(runtimeCfg.FONT_FILE).map(async fontKey => {
+                const fontInfo = runtimeCfg.FONT_FILE[fontKey];
                 const fontFace = new FontFace(fontKey, `url(${fontInfo.file})`, { style: 'normal', weight: '400' });
-                return fontFace.load()
-                .then(() => document.fonts.add(fontFace))
-                .finally(() => {
+                try {
+                    await fontFace.load();
+                    return document.fonts.add(fontFace);
+                } finally {
                     loadedResources++;
                     updateProgress();
-                });
+                }
             });
             Promise.allSettled(fontPromises).then(resolve);
         });
@@ -190,16 +209,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function getBoxCoordinates() {
-        const baseConfig = config.BASEIMAGE_MAPPING[currentEmotion];
-        if (typeof baseConfig !== 'string') {
-            return {
-                topLeft: baseConfig.TEXT_BOX_TOPLEFT,
-                bottomRight: baseConfig.IMAGE_BOX_BOTTOMRIGHT
-            }
-        }
+        const { config: emotionCfg } = getEmotionCfg(currentEmotion);
         return {
-            topLeft: config.TEXT_BOX_TOPLEFT,
-            bottomRight: config.IMAGE_BOX_BOTTOMRIGHT
+            topLeft: emotionCfg.TEXT_BOX_TOPLEFT,
+            bottomRight: emotionCfg.IMAGE_BOX_BOTTOMRIGHT
         }
     }
 
@@ -269,7 +282,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     drawBaseImage();
                     gifState.currentIndex = i;
                     drawGifFrame();
-                    if (config.USE_BASE_OVERLAY && overlayImage.complete) ctx.drawImage(overlayImage, 0, 0);
+                    const { config: emotionCfg } = getEmotionCfg(currentEmotion);
+                    if (emotionCfg.USE_BASE_OVERLAY && overlayImage.complete) ctx.drawImage(overlayImage, 0, 0);
                     gif.addFrame(canvas, { copy: true, delay: gifState.frames[i].delay || 100 });
                     await new Promise(r => setTimeout(r, 0));
                 }
@@ -311,27 +325,28 @@ document.addEventListener('DOMContentLoaded', () => {
     function generateImage() {
         if (!loadComplete) return;
         const text = document.getElementById('textInput').value.trim();
+        const { config: emotionCfg } = getEmotionCfg(currentEmotion);
         drawBaseImage();
         if (gifState.frames) {
             drawGifFrame();
         } else if (uploadedImage) {
             pasteImageAuto(uploadedImage);
         } else if (text) {
-            drawTextWithFontSize(text, currentFontSize);
+            drawTextWithFontSize(text, currentFontSize, emotionCfg);
         }
-        if (config.USE_BASE_OVERLAY && overlayImage.complete) ctx.drawImage(overlayImage, 0, 0);
+        if (emotionCfg.USE_BASE_OVERLAY && overlayImage.complete) ctx.drawImage(overlayImage, 0, 0);
     }
 
-    function drawTextWithFontSize(text, fontSize) {
+    function drawTextWithFontSize(text, fontSize, emotionCfg) {
         const { topLeft: [x1, y1], bottomRight: [x2, y2] } = getBoxCoordinates();
         const regionWidth = x2 - x1;
         const regionHeight = y2 - y1;
-        const segments = parseColorSegments(text);
+        const segments = parseColorSegments(text, emotionCfg);
         const lineHeight = fontSize * 1.2;
         const lines = wrapText(segments, fontSize, regionWidth, ctx);
         const totalTextHeight = lines.length * lineHeight;
         const yStart = y1 + (regionHeight - totalTextHeight) / 2;
-        ctx.font = `${fontSize}px ${config.FONT_FILE[currentFont].family}`;
+        ctx.font = `${fontSize}px ${runtimeCfg.FONT_FILE[currentFont].family}`;
         ctx.textBaseline = 'top';
         lines.forEach((line, index) => {
             let x = x1;
@@ -346,7 +361,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    function parseColorSegments(text) {
+    function parseColorSegments(text, cfg) {
         const segments = [];
         let inBracket = false;
         let currentText = '';
@@ -354,26 +369,26 @@ document.addEventListener('DOMContentLoaded', () => {
         for (const char of text) {
             if (char === '[' || char === '【') {
                 if (currentText) {
-                    segments.push({ text: currentText, color: config.textColor });
+                    segments.push({ text: currentText, color: cfg.TEXT_COLOR });
                     currentText = '';
                 }
                 currentText += char;
                 inBracket = true;
             } else if (char === ']' || char === '】') {
                 currentText += char;
-                segments.push({ text: currentText, color: config.bracketColor });
+                segments.push({ text: currentText, color: cfg.BRACKET_COLOR });
                 currentText = '';
                 inBracket = false;
             } else {
                 currentText += char;
             }
         }
-        if (currentText) segments.push({ text: currentText, color: config.textColor });
+        if (currentText) segments.push({ text: currentText, color: cfg.TEXT_COLOR });
         return segments;
     }
 
     function wrapText(segments, fontSize, maxWidth, ctx) {
-        ctx.font = `${fontSize}px ${config.FONT_FILE[currentFont].family}`;
+        ctx.font = `${fontSize}px ${runtimeCfg.FONT_FILE[currentFont].family}`;
         const lines = [];
         let currentLine = [];
         let currentWidth = 0;
