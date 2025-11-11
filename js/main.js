@@ -25,7 +25,7 @@ const config = {
     USE_BASE_OVERLAY: true,
     bracketColor: '#6a5acd',
     textColor: '#000000'
-};
+}
 
 document.addEventListener('DOMContentLoaded', () => {
     let currentEmotion = '普通';
@@ -45,7 +45,7 @@ document.addEventListener('DOMContentLoaded', () => {
         width: 0,
         height: 0,
         loopCount: null
-    };
+    }
     const progressContainer = document.getElementById('progressContainer');
     const progressBar = document.getElementById('progressBar');
     const loadingOverlay = document.getElementById('loadingOverlay');
@@ -138,7 +138,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (emotion) baseImages[emotion] = img;
                     }
                     if (loaded >= imagePaths.length) resolve();
-                };
+                }
             });
         });
     }
@@ -195,12 +195,12 @@ document.addEventListener('DOMContentLoaded', () => {
             return {
                 topLeft: baseConfig.TEXT_BOX_TOPLEFT,
                 bottomRight: baseConfig.IMAGE_BOX_BOTTOMRIGHT
-            };
+            }
         }
         return {
             topLeft: config.TEXT_BOX_TOPLEFT,
             bottomRight: config.IMAGE_BOX_BOTTOMRIGHT
-        };
+        }
     }
 
     function stopGifAnimation() {
@@ -208,7 +208,15 @@ document.addEventListener('DOMContentLoaded', () => {
             clearTimeout(gifState.timer);
             gifState.timer = null;
         }
-        gifState = { ...gifState, file: null, frames: null, currentIndex: 0 };
+        gifState = {
+            file: null,
+            frames: null,
+            currentIndex: 0,
+            timer: null,
+            width: 0,
+            height: 0,
+            loopCount: null
+        }
     }
 
     function startGifAnimation() {
@@ -218,7 +226,7 @@ document.addEventListener('DOMContentLoaded', () => {
             generateImage();
             const delay = gifState.frames[gifState.currentIndex].delay || 100;
             gifState.timer = setTimeout(animate, delay);
-        };
+        }
         generateImage();
         gifState.timer = setTimeout(animate, gifState.frames[0].delay || 100);
     }
@@ -389,7 +397,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     i = cutIdx;
                 }
             }
-        };
+        }
 
         segments.forEach(seg => {
             if (seg.text.includes('\n')) {
@@ -501,13 +509,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     width: gifReader.width,
                     height: gifReader.height,
                     loopCount: null
-                };
+                }
                 const previewContainer = document.getElementById('previewImage');
                 previewContainer.innerHTML = `<img src="${URL.createObjectURL(gifState.file)}" alt="预览图">`;
                 previewContainer.style.display = 'block';
                 document.getElementById('uploadBtnLabel').textContent = '删除图片';
                 startGifAnimation();
-            };
+            }
             reader.readAsArrayBuffer(file);
             return;
         }
@@ -523,9 +531,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 previewContainer.style.display = 'block';
                 generateImage();
                 document.getElementById('uploadBtnLabel').textContent = '删除图片';
-            };
+            }
             img.src = event.target.result;
-        };
+        }
         reader.readAsDataURL(file);
         document.getElementById('imageUpload').value = '';
     }
