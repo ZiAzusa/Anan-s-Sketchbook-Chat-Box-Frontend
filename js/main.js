@@ -477,16 +477,14 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!loadComplete) return;
         const file = e.target.files[0];
         if (!file) return;
-        const isGif = file.type === 'image/gif' || file.name.toLowerCase().endsWith('.gif');
-        const GifReaderCtor = window.GifReader || (window.omggif && window.omggif.GifReader);
 
-        if (isGif && GifReaderCtor) {
+        if (file.type === 'image/gif' || file.name.toLowerCase().endsWith('.gif')) {
             stopGifAnimation();
             const reader = new FileReader();
             reader.onload = async (event) => {
                 const arrayBuffer = event.target.result;
                 const uint8 = new Uint8Array(arrayBuffer);
-                const gifReader = new GifReaderCtor(uint8);
+                const gifReader = new window.GifReader(uint8);
                 const framesCount = gifReader.numFrames();
                 const frames = [];
                 for (let i = 0; i < framesCount; i++) {
@@ -515,6 +513,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 previewContainer.style.display = 'block';
                 document.getElementById('uploadBtnLabel').textContent = '删除图片';
                 startGifAnimation();
+                document.getElementById('imageUpload').value = '';
             }
             reader.readAsArrayBuffer(file);
             return;
@@ -535,7 +534,6 @@ document.addEventListener('DOMContentLoaded', () => {
             img.src = event.target.result;
         }
         reader.readAsDataURL(file);
-        document.getElementById('imageUpload').value = '';
     }
 
     function removeImage() {
@@ -545,6 +543,7 @@ document.addEventListener('DOMContentLoaded', () => {
         previewContainer.innerHTML = '';
         previewContainer.style.display = 'none';
         generateImage();
+        document.getElementById('imageUpload').value = '';
         document.getElementById('uploadBtnLabel').textContent = '选择图片';
     }
 
