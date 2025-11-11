@@ -122,7 +122,6 @@ document.addEventListener('DOMContentLoaded', () => {
         return new Promise((resolve) => {
             const imagePaths = [...Object.values(config.BASEIMAGE_MAPPING), config.BASE_OVERLAY_FILE];
             let loaded = 0;
-
             imagePaths.forEach(path => {
                 const img = new Image();
                 img.crossOrigin = 'anonymous';
@@ -264,7 +263,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 workerScript: 'js/gif/gif.worker.js'
             });
             const originalIndex = gifState.currentIndex;
-
             (async () => {
                 for (let i = 0; i < gifState.frames.length; i++) {
                     drawBaseImage();
@@ -334,7 +332,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const yStart = y1 + (regionHeight - totalTextHeight) / 2;
         ctx.font = `${fontSize}px ${config.FONT_FILE[currentFont].family}`;
         ctx.textBaseline = 'top';
-
         lines.forEach((line, index) => {
             let x = x1;
             const y = yStart + index * lineHeight;
@@ -398,7 +395,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
         }
-
         segments.forEach(seg => {
             if (seg.text.includes('\n')) {
                 const parts = seg.text.split('\n');
@@ -449,9 +445,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function setEmotion(emotion) {
         if (!loadComplete) return;
         currentEmotion = emotion;
-        document.querySelectorAll('.emotion-buttons button').forEach(btn => {
-            btn.classList.toggle('active', btn.dataset.emotion === emotion);
-        });
+        document.querySelectorAll('.emotion-buttons button').forEach(btn => btn.classList.toggle('active', btn.dataset.emotion === emotion));
         canvas.width = baseImages[emotion].width;
         canvas.height = baseImages[emotion].height;
         generateImage();
@@ -460,9 +454,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function setFont(font) {
         if (!loadComplete) return;
         currentFont = font;
-        document.querySelectorAll('.font-buttons button').forEach(btn => {
-            btn.classList.toggle('active', btn.dataset.font === font);
-        });
+        document.querySelectorAll('.font-buttons button').forEach(btn => btn.classList.toggle('active', btn.dataset.font === font));
         generateImage();
     }
 
@@ -477,7 +469,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!loadComplete) return;
         const file = e.target.files[0];
         if (!file) return;
-
         if (file.type === 'image/gif' || file.name.toLowerCase().endsWith('.gif')) {
             stopGifAnimation();
             const reader = new FileReader();
@@ -518,7 +509,6 @@ document.addEventListener('DOMContentLoaded', () => {
             reader.readAsArrayBuffer(file);
             return;
         }
-
         const reader = new FileReader();
         reader.onload = (event) => {
             const img = new Image();
@@ -562,6 +552,26 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    function pauseClipboardToCanvas(e) {
+        if (!loadComplete) return;
+        const clipboardData = e.clipboardData || window.clipboardData;
+        if (!clipboardData) return;
+        const items = clipboardData.items || clipboardData.files || [];
+        if (items.length <= 0) return;
+        const lastItem = items[items.length - 1];
+        const mime = lastItem.type || '';
+        if (mime.indexOf('image') == -1) return;
+        const blob = lastItem instanceof File ? lastItem : (lastItem.getAsFile ? lastItem.getAsFile() : lastItem.getAsBlob());
+        if (!blob) return;
+        const ext = (blob.type && blob.type.split('/')[1]) ? blob.type.split('/')[1] : 'png';
+        const file = new File([blob], `pasted-image.${ext}`, { type: blob.type });
+        const dt = new DataTransfer();
+        dt.items.add(file);
+        const input = document.getElementById('imageUpload');
+        input.files = dt.files;
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+
     function downloadImage() {
         if (!loadComplete) return;
         if (gifState.frames) {
@@ -596,7 +606,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const fontSizeValue = document.getElementById('fontSizeValue');
         progressContainer.style.display = 'block';
         updatefontSizeCtrl(fontSizeCtrl);
-
         Promise.all([preloadAllImages(), preloadAllFonts()])
         .then(() => {
             generateEmotionButtons();
@@ -620,10 +629,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 generateImage();
             });
             document.addEventListener('keydown', (e) => {
-                if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'c' && 
-                    document.activeElement.id !== 'textInput' && !e.shiftKey && !e.altKey) {
+                if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'c' && document.activeElement.id !== 'textInput' && !e.shiftKey && !e.altKey) {
                     e.preventDefault();
                     copyCanvasToClipboard();
+                }
+            });
+            document.addEventListener('keydown', (e) => {
+                if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'v' && document.activeElement.id !== 'textInput' && !e.shiftKey && !e.altKey) {
+                    e.preventDefault();
+                    pauseClipboardToCanvas();
                 }
             });
             canvas.addEventListener('click', copyCanvasToClipboard);
