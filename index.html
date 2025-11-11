@@ -1,69 +1,69 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>安安的素描本聊天框</title>
-    <link rel="stylesheet" href="css/style.min.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>安安的素描本聊天框</title>
+  <link rel="stylesheet" href="css/style.min.css">
+  <!-- 引入GIF/APNG编解码库 -->
+  <script src="js/gif/omggif.min.js"></script>
+  <script src="js/gif/gif.min.js"></script>
 </head>
 <body>
-    <div id="progressContainer">
-        <div id="progressBar"></div>
-    </div>
-    <div id="loadingOverlay">
-        <div>请等待加载完成...</div>
-        <div>加载进度: <span id="progressText">0%</span></div>
-    </div>
-    <div class="container">
-        <header>
-            <h1>安安的素描本聊天框</h1>
-            <p>输入文字或上传图片，来让安安说点什么～</p>
-        </header>
-        <div class="main-content">
-            <div class="control-panel">
-                <div class="emotion-selector">
-                    <h3>选择表情</h3>
-                    <div class="emotion-buttons" id="emotionButtonsContainer"></div>
-                </div>         
-                <div class="font-selector">
-                    <h3>选择字体</h3>
-                    <div class="font-buttons" id="fontButtonsContainer"></div>
-                    <div class="font-size-control">
-                        <label for="fontSize">字体大小：</label>
-                        <input type="range" id="fontSize" min="12" max="72" value="32">
-                        <span id="fontSizeValue">32px</span>
-                    </div>
-                </div>
-                <div class="text-input">
-                    <h3>输入文本</h3>
-                    <textarea id="textInput" placeholder="让安安说点什么..."></textarea>
-                    <p class="hint">使用[]或【】包裹的文字会变成紫色～</p>
-                </div>
-                <div class="image-upload">
-                    <h3>上传图片</h3>
-                    <label for="imageUpload" class="upload-btn" id="uploadBtnLabel">选择图片</label>
-                    <input type="file" id="imageUpload" accept="image/*" hidden>
-                    <div id="previewImage" class="preview-image"></div>
-                </div>
-                <div class="action-buttons">
-                    <button id="downloadBtn">下载图片</button>
-                    <p class="hint">点击预览区域或按Ctrl+C可复制生成的图片到剪贴板</p>
-                </div>
-            </div>
-            <div class="preview-panel">
-                <h3>预览</h3>
-                <div class="preview-container">
-                    <canvas id="previewCanvas"></canvas>
-                </div>
-            </div>
+  <div id="progressContainer">
+    <div id="progressBar"></div>
+  </div>
+  <div id="loadingOverlay">
+    <div>请等待加载完成...</div>
+    <div>加载进度: <span id="progressText">0%</span></div>
+  </div>
+  <div class="container">
+    <header>
+      <h1>安安的素描本聊天框</h1>
+      <p>输入文字或上传图片，来让安安说点什么～</p>
+    </header>
+    <div class="main-content">
+      <div class="control-panel">
+        <div class="emotion-selector">
+          <h3>选择表情</h3>
+          <div class="emotion-buttons" id="emotionButtonsContainer"></div>
+        </div>     
+        <div class="font-selector">
+          <h3>选择字体</h3>
+          <div class="font-buttons" id="fontButtonsContainer"></div>
+          <div class="font-size-control">
+            <label for="fontSize">字体大小：</label>
+            <input type="range" id="fontSize" min="12" max="72" value="32">
+            <span id="fontSizeValue">32px</span>
+          </div>
         </div>
-        <footer>
-            <p>安安的素描本聊天框 Frontend Ver; Open Source on <a href="https://github.com/ZiAzusa/Anan-s-Sketchbook-Chat-Box">GitHub</a><br>Designed by ZiAzusa with GPT; Thanks: <a href="https://github.com/MarkCup-Official/Anan-s-Sketchbook-Chat-Box">MarkCup-Official/Anan-s-Sketchbook-Chat-Box</a></p>
-        </footer>
+        <div class="text-input">
+          <h3>输入文本</h3>
+          <textarea id="textInput" placeholder="让安安说点什么..."></textarea>
+          <p class="hint">使用[]或【】包裹的文字会变成紫色～</p>
+        </div>
+        <div class="image-upload">
+          <h3>上传图片</h3>
+          <label for="imageUpload" class="upload-btn" id="uploadBtnLabel">选择图片</label>
+          <input type="file" id="imageUpload" accept="image/*" hidden>
+          <div id="previewImage" class="preview-image"></div>
+        </div>
+        <div class="action-buttons">
+          <button id="downloadBtn">下载图片</button>
+          <p class="hint">点击预览区域或按Ctrl+C可复制生成的图片到剪贴板</p>
+        </div>
+      </div>
+      <div class="preview-panel">
+        <h3>预览</h3>
+        <div class="preview-container">
+          <canvas id="previewCanvas"></canvas>
+        </div>
+      </div>
     </div>
-    <!-- 引入GIF/APNG编解码库 -->
-    <script src="js/gif/omggif.min.js"></script>
-    <script src="js/gif/gif.min.js"></script>
-    <script src="js/main.min.js"></script>
+    <footer>
+      <p>安安的素描本聊天框 Frontend Ver; Open Source on <a href="https://github.com/ZiAzusa/Anan-s-Sketchbook-Chat-Box">GitHub</a><br>Designed by ZiAzusa with GPT; Thanks: <a href="https://github.com/MarkCup-Official/Anan-s-Sketchbook-Chat-Box">MarkCup-Official/Anan-s-Sketchbook-Chat-Box</a></p>
+    </footer>
+  </div>
+  <script src="js/main.min.js"></script>
 </body>
 </html>

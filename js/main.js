@@ -513,7 +513,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 previewContainer.style.display = 'block';
                 document.getElementById('uploadBtnLabel').textContent = '删除图片';
                 startGifAnimation();
-                document.getElementById('imageUpload').value = '';
             }
             reader.readAsArrayBuffer(file);
             return;
