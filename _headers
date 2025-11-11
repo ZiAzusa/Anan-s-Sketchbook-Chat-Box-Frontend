@@ -1,12 +1,15 @@
 # Cloudflare Pages的响应头配置
 /images/*
   Cache-Control: public, max-age=31536000, must-revalidate
+  Access-Control-Allow-Origin: *
 
 /*.jpg
   Cache-Control: public, max-age=31536000, must-revalidate
+  Access-Control-Allow-Origin: *
 
 /*.png
   Cache-Control: public, max-age=31536000, must-revalidate
+  Access-Control-Allow-Origin: *
 
 /*.woff2
   Cache-Control: public, max-age=31536000, must-revalidate
