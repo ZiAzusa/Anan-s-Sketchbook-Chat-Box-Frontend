@@ -162,20 +162,17 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function preloadAllFonts() {
-        return new Promise((resolve) => {
-            const fontPromises = Object.keys(runtimeCfg.FONT_FILE).map(async fontKey => {
-                const fontInfo = runtimeCfg.FONT_FILE[fontKey];
-                const fontFace = new FontFace(fontKey, `url(${fontInfo.file})`, { style: 'normal', weight: '400' });
-                try {
-                    await fontFace.load();
-                    return document.fonts.add(fontFace);
-                } finally {
-                    loadedResources++;
-                    updateProgress();
-                }
+        const fontPromises = Object.keys(runtimeCfg.FONT_FILE).map(fontKey => {
+            const fontInfo = runtimeCfg.FONT_FILE[fontKey];
+            const fontFace = new FontFace(fontKey, `url(${fontInfo.file})`, { style: 'normal', weight: '400' });
+            return fontFace.load()
+            .then(() => document.fonts.add(fontFace))
+            .finally(() => {
+                loadedResources++;
+                updateProgress();
             });
-            Promise.allSettled(fontPromises).then(resolve);
         });
+        return Promise.allSettled(fontPromises);
     }
 
     function updatefontSizeCtrl(target) {
