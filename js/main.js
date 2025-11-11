@@ -103,6 +103,22 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    function adjustButtonLayout(containerSelector, maxPerRow) {
+        const container = document.querySelector(containerSelector);
+        const buttons = container.querySelectorAll('button');
+        const buttonCount = buttons.length;
+        if (buttonCount === 0) return;
+        const perRowCount = ((c, m) => {
+            let divisor = 1;
+            while (Math.ceil(c / divisor) > m) divisor++;
+            return Math.ceil(c / divisor);
+        })(buttonCount, maxPerRow);
+        const gap = 8;
+        const totalGap = gap * (perRowCount - 1);
+        const buttonWidth = `calc((100% - ${totalGap}px) / ${perRowCount})`;
+        buttons.forEach(button => button.style.width = buttonWidth);
+    }
+
     function generateEmotionButtons() {
         emotionButtonsContainer.innerHTML = '';
         Object.keys(runtimeCfg.BASEIMAGE_MAPPING).forEach(emotion => {
@@ -113,6 +129,7 @@ document.addEventListener('DOMContentLoaded', () => {
             button.addEventListener('click', (e) => setEmotion(e.target.dataset.emotion));
             emotionButtonsContainer.appendChild(button);
         });
+        adjustButtonLayout('.emotion-buttons', 6);
     }
 
     function generateFontButtons() {
@@ -126,6 +143,7 @@ document.addEventListener('DOMContentLoaded', () => {
             button.addEventListener('click', (e) => setFont(e.target.dataset.font));
             fontButtonsContainer.appendChild(button);
         });
+        adjustButtonLayout('.font-buttons', 3);
     }
 
     function preloadAllImages() {
