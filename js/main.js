@@ -512,8 +512,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 previewContainer.innerHTML = `<img src="${URL.createObjectURL(gifState.file)}" alt="预览图">`;
                 previewContainer.style.display = 'block';
                 document.getElementById('uploadBtnLabel').textContent = '删除图片';
-                startGifAnimation();
                 document.getElementById('imageUpload').value = '';
+                startGifAnimation();
             }
             reader.readAsArrayBuffer(file);
             return;
@@ -530,6 +530,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 previewContainer.style.display = 'block';
                 generateImage();
                 document.getElementById('uploadBtnLabel').textContent = '删除图片';
+                document.getElementById('imageUpload').value = '';
             }
             img.src = event.target.result;
         }
@@ -544,6 +545,7 @@ document.addEventListener('DOMContentLoaded', () => {
         previewContainer.style.display = 'none';
         generateImage();
         document.getElementById('uploadBtnLabel').textContent = '选择图片';
+        document.getElementById('imageUpload').value = '';
     }
 
     function copyCanvasToClipboard() {
