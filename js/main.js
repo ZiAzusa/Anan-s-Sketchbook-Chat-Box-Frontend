@@ -554,11 +554,11 @@ document.addEventListener('DOMContentLoaded', () => {
         .then(clipboardData => {
             if (clipboardData.length <= 0) return;
             const lastItem = clipboardData[clipboardData.length - 1];
-            if (!lastItem.types.some(type => type.startsWith('image/'))) return;
-            const blob = lastItem.getAsFile() || lastItem.getAsBlob();
+            const imageTypes = lastItem.types.filter(type => type.startsWith('image/'));
+            if (imageTypes.length <= 0) return;
+            const blob = lastItem.getType(imageTypes[0]);
             if (!blob) return;
-            const ext = blob.type?.split('/')[1] || 'png';
-            const file = new File([blob], `pasted-image.${ext}`, { type: blob.type });
+            const file = new File([blob], `pasted-image.${imageTypes[0].split('/')[1] || 'png'}`, { type: blob.type });
             const dt = new DataTransfer();
             dt.items.add(file);
             const input = document.getElementById('imageUpload');
