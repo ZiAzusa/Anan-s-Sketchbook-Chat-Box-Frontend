@@ -274,35 +274,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    function composeApngBlob() {
-        return new Promise(async (resolve, reject) => {
-            const w = canvas.width;
-            const h = canvas.height;
-            const framesBuf = [];
-            const delays = [];
-            const originalIndex = gifState.currentIndex;
-            try {
-                for (let i = 0; i < gifState.frames.length; i++) {
-                    drawBaseImage();
-                    gifState.currentIndex = i;
-                    drawGifFrame();
-                    if (config.USE_BASE_OVERLAY && overlayImage.complete) ctx.drawImage(overlayImage, 0, 0);
-                    const imgData = ctx.getImageData(0, 0, w, h);
-                    framesBuf.push(imgData.data.buffer);
-                    delays.push(gifState.frames[i].delay || 100);
-                    await new Promise(r => setTimeout(r, 0));
-                }
-                const apngArrBuf = UPNG.encode(framesBuf, w, h, 0, delays);
-                const blob = new Blob([apngArrBuf], { type: 'image/png' });
-                gifState.currentIndex = originalIndex;
-                resolve(blob);
-            } catch (err) {
-                gifState.currentIndex = originalIndex;
-                reject(err);
-            }
-        });
-    }
-
     function drawBaseImage() {
         if (!loadComplete || !baseImages[currentEmotion]?.complete) return;
         ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -572,21 +543,11 @@ document.addEventListener('DOMContentLoaded', () => {
     function copyCanvasToClipboard() {
         if (!loadComplete || !baseImages[currentEmotion]?.complete) return;
         try {
-            if (gifState.frames) {
-                composeApngBlob()
-                .then(blob => {
-                    const item = new ClipboardItem({ 'image/png': blob });
-                    return navigator.clipboard.write([item]);
-                })
-                .then(() => showNotification('图片已复制到剪贴板'))
-                .catch(err => showNotification(`复制失败: ${err}`, 'error'));
-                return;
-            }
             const dataURL = canvas.toDataURL('image/png');
             const blob = dataURLToBlob(dataURL);
             const item = new ClipboardItem({ 'image/png': blob });
             navigator.clipboard.write([item])
-            .then(() => showNotification('图片已复制到剪贴板'))
+            .then(() => showNotification(gifState.frames ? "已复制当前帧到剪贴板" : '已复制图片到剪贴板'))
             .catch(err => showNotification(`复制失败: ${err}`, 'error'));
         } catch (err) {
             showNotification(`复制失败: ${err}`, 'error');
