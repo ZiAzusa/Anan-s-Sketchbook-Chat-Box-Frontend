@@ -4,6 +4,8 @@ window.APP_CONFIG = {
         IMAGE_BOX_BOTTOMRIGHT: [119 + 279, 450 + 175], // 相对于画布左上角的图片框右下角坐标
         TEXT_COLOR: '#000000', // 默认文本颜色
         BRACKET_COLOR: '#6a5acd', // 洗脑文本颜色
+        TEXT_STROKE_ENABLED: false, // 是否启用字体描边
+        TEXT_STROKE_COLOR: '#ffffff', // 字体描边颜色
         USE_BASE_OVERLAY: true, // 是否使用覆盖图层
         BASE_OVERLAY_FILE: 'images/base_overlay.png' // 覆盖图层文件路径
     },
@@ -28,14 +30,16 @@ window.APP_CONFIG = {
         '无语': 'images/base/无语.png',
         '脸红': 'images/base/脸红.png',
         '病娇': 'images/base/病娇.png',
-        // '魔女化': {
-        //     PATH: 'images/base/魔女化.png',
-        //     TEXT_BOX_TOPLEFT: [119, 420], // 魔女化表情单独配置
-        //     IMAGE_BOX_BOTTOMRIGHT: [119 + 279, 420 + 175],
-        //     TEXT_COLOR: '#000000',
-        //     BRACKET_COLOR: '#6a5acd',
-        //     USE_BASE_OVERLAY: true,
-        //     BASE_OVERLAY_FILE: 'images/base_overlay.png'
-        // }
+        '魔女化': {
+            PATH: 'images/base/魔女化.png',
+            TEXT_BOX_TOPLEFT: [119, 490], // 魔女化表情单独配置
+            IMAGE_BOX_BOTTOMRIGHT: [540, 610],
+            TEXT_COLOR: '#eeeeee',
+            BRACKET_COLOR: '#6a5acd',
+            TEXT_STROKE_ENABLED: true,
+            TEXT_STROKE_COLOR: '#111111',
+            USE_BASE_OVERLAY: false,
+            BASE_OVERLAY_FILE: 'images/base_overlay.png'
+        }
     }
 }

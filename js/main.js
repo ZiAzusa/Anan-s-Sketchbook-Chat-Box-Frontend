@@ -1,10 +1,12 @@
 document.addEventListener('DOMContentLoaded', () => {
-    const runtimeCfg = window.APP_CONFIG || {
+    const config = window.APP_CONFIG || {
         DEFAULT: {
             TEXT_BOX_TOPLEFT: [119, 450],
             IMAGE_BOX_BOTTOMRIGHT: [119 + 279, 450 + 175],
             TEXT_COLOR: '#000000',
             BRACKET_COLOR: '#6a5acd',
+            TEXT_STROKE_ENABLED: false,
+            TEXT_STROKE_COLOR: '#ffffff',
             USE_BASE_OVERLAY: true,
             BASE_OVERLAY_FILE: 'images/base_overlay.png'
         },
@@ -19,7 +21,7 @@ document.addEventListener('DOMContentLoaded', () => {
             '普通': 'images/base/base.png'
         }
     }
-    const totalResources = Object.keys(runtimeCfg.BASEIMAGE_MAPPING).length + 1 + Object.keys(runtimeCfg.FONT_FILE).length;
+    const totalResources = Object.keys(config.BASEIMAGE_MAPPING).length + 1 + Object.keys(config.FONT_FILE).length;
     let currentEmotion = '普通';
     let currentFont = 'Source Han Sans CN';
     let uploadedImage = null;
@@ -47,21 +49,21 @@ document.addEventListener('DOMContentLoaded', () => {
     let loadedResources = 0;
 
     function getEmotionCfg(emotionName) {
-        const entry = runtimeCfg.BASEIMAGE_MAPPING[emotionName];
+        const entry = config.BASEIMAGE_MAPPING[emotionName];
         if (typeof entry === 'string') {
-            const cfg = Object.create(runtimeCfg.DEFAULT);
+            const cfg = Object.create(config.DEFAULT);
             return { PATH: entry, config: cfg };
         }
         if (entry && typeof entry === 'object') {
             const path = entry.PATH || entry.path || '';
-            const merged = Object.create(runtimeCfg.DEFAULT);
+            const merged = Object.create(config.DEFAULT);
             Object.keys(entry).forEach(k => {
                 if (k === 'PATH' || k === 'path') return;
                 merged[k] = entry[k];
             });
             return { PATH: path, config: merged };
         }
-        return { PATH: '', config: Object.create(runtimeCfg.DEFAULT) };
+        return { PATH: '', config: Object.create(config.DEFAULT) };
     }
 
     function disableControls() {
@@ -121,7 +123,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function generateEmotionButtons() {
         emotionButtonsContainer.innerHTML = '';
-        Object.keys(runtimeCfg.BASEIMAGE_MAPPING).forEach(emotion => {
+        Object.keys(config.BASEIMAGE_MAPPING).forEach(emotion => {
             const button = document.createElement('button');
             button.dataset.emotion = emotion;
             button.textContent = emotion;
@@ -134,8 +136,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function generateFontButtons() {
         fontButtonsContainer.innerHTML = '';
-        Object.keys(runtimeCfg.FONT_FILE).forEach(fontKey => {
-            const fontInfo = runtimeCfg.FONT_FILE[fontKey];
+        Object.keys(config.FONT_FILE).forEach(fontKey => {
+            const fontInfo = config.FONT_FILE[fontKey];
             const button = document.createElement('button');
             button.dataset.font = fontKey;
             button.textContent = fontInfo.displayText;
@@ -148,7 +150,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function preloadAllImages() {
         return new Promise((resolve) => {
-            const emotions = Object.keys(runtimeCfg.BASEIMAGE_MAPPING);
+            const emotions = Object.keys(config.BASEIMAGE_MAPPING);
             const pathMap = {};
             const imagePaths = [];
             emotions.forEach(em => {
@@ -156,7 +158,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 pathMap[PATH] = em;
                 imagePaths.push(PATH);
             });
-            imagePaths.push(runtimeCfg.DEFAULT.BASE_OVERLAY_FILE);
+            imagePaths.push(config.DEFAULT.BASE_OVERLAY_FILE);
 
             let loaded = 0;
             imagePaths.forEach(path => {
@@ -167,7 +169,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     loaded++;
                     loadedResources++;
                     updateProgress();
-                    if (path === runtimeCfg.DEFAULT.BASE_OVERLAY_FILE) {
+                    if (path === config.DEFAULT.BASE_OVERLAY_FILE) {
                         overlayImage = img;
                     } else {
                         const emotion = pathMap[path];
@@ -180,8 +182,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function preloadAllFonts() {
-        const fontPromises = Object.keys(runtimeCfg.FONT_FILE).map(fontKey => {
-            const fontInfo = runtimeCfg.FONT_FILE[fontKey];
+        const fontPromises = Object.keys(config.FONT_FILE).map(fontKey => {
+            const fontInfo = config.FONT_FILE[fontKey];
             const fontFace = new FontFace(fontKey, `url(${fontInfo.file})`, { style: 'normal', weight: '400' });
             return fontFace.load()
             .then(() => document.fonts.add(fontFace))
@@ -361,17 +363,29 @@ document.addEventListener('DOMContentLoaded', () => {
         const lines = wrapText(segments, fontSize, regionWidth, ctx);
         const totalTextHeight = lines.length * lineHeight;
         const yStart = y1 + (regionHeight - totalTextHeight) / 2;
-        ctx.font = `${fontSize}px ${runtimeCfg.FONT_FILE[currentFont].family}`;
-        ctx.textBaseline = 'top';
+            ctx.font = `${fontSize}px ${config.FONT_FILE[currentFont].family}`;
+            ctx.textBaseline = 'top';
+            const strokeEnabled = (typeof emotionCfg.TEXT_STROKE_ENABLED !== 'undefined')
+                ? emotionCfg.TEXT_STROKE_ENABLED
+                : (config.DEFAULT && config.DEFAULT.TEXT_STROKE_ENABLED) || false;
+            const strokeColor = emotionCfg.TEXT_STROKE_COLOR || (config.DEFAULT && config.DEFAULT.TEXT_STROKE_COLOR) || '#ffffff';
+            const strokeWidth = Math.max(2, Math.round(fontSize / 12));
         lines.forEach((line, index) => {
             let x = x1;
             const y = yStart + index * lineHeight;
             const lineWidth = line.reduce((sum, seg) => sum + ctx.measureText(seg.text).width, 0);
             if (lineWidth < regionWidth) x += (regionWidth - lineWidth) / 2;
             line.forEach(seg => {
-                ctx.fillStyle = seg.color;
-                ctx.fillText(seg.text, x, y);
-                x += ctx.measureText(seg.text).width;
+                    if (strokeEnabled) {
+                        ctx.lineWidth = strokeWidth;
+                        ctx.strokeStyle = strokeColor;
+                        ctx.lineJoin = 'round';
+                        ctx.miterLimit = 2;
+                        ctx.strokeText(seg.text, x, y);
+                    }
+                    ctx.fillStyle = seg.color;
+                    ctx.fillText(seg.text, x, y);
+                    x += ctx.measureText(seg.text).width;
             });
         });
     }
@@ -403,7 +417,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function wrapText(segments, fontSize, maxWidth, ctx) {
-        ctx.font = `${fontSize}px ${runtimeCfg.FONT_FILE[currentFont].family}`;
+        ctx.font = `${fontSize}px ${config.FONT_FILE[currentFont].family}`;
         const lines = [];
         let currentLine = [];
         let currentWidth = 0;
