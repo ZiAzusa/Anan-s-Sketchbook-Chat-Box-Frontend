@@ -513,6 +513,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 previewContainer.style.display = 'block';
                 document.getElementById('uploadBtnLabel').textContent = '删除图片';
                 startGifAnimation();
+                document.getElementById('imageUpload').value = '';
             }
             reader.readAsArrayBuffer(file);
             return;
@@ -542,7 +543,6 @@ document.addEventListener('DOMContentLoaded', () => {
         previewContainer.innerHTML = '';
         previewContainer.style.display = 'none';
         generateImage();
-        document.getElementById('imageUpload').value = '';
         document.getElementById('uploadBtnLabel').textContent = '选择图片';
     }
 
