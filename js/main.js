@@ -540,35 +540,32 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function copyCanvasToClipboard() {
         if (!loadComplete || !baseImages[currentEmotion]?.complete) return;
-        try {
-            const dataURL = canvas.toDataURL('image/png');
-            const blob = dataURLToBlob(dataURL);
-            const item = new ClipboardItem({ 'image/png': blob });
-            navigator.clipboard.write([item])
-            .then(() => showNotification(gifState.frames ? "已复制当前帧到剪贴板" : '已复制图片到剪贴板'))
-            .catch(err => showNotification(`复制失败: ${err}`, 'error'));
-        } catch (err) {
-            showNotification(`复制失败: ${err}`, 'error');
-        }
+        const dataURL = canvas.toDataURL('image/png');
+        const blob = dataURLToBlob(dataURL);
+        const item = new ClipboardItem({ 'image/png': blob });
+        navigator.clipboard.write([item])
+        .then(() => showNotification(gifState.frames ? "已复制当前帧到剪贴板" : '已复制图片到剪贴板'))
+        .catch(err => showNotification(`复制失败: ${err}`, 'error'));
     }
 
     function pauseClipboardToCanvas() {
         if (!loadComplete) return;
-        (async () => {
-            const clipboardData = await navigator.clipboard.read();
-            if (!clipboardData) return;
+        navigator.clipboard.read()
+        .then(clipboardData => {
+            if (clipboardData.length <= 0) return;
             const lastItem = clipboardData[clipboardData.length - 1];
-            if (!lastItem.types.includes("image")) return;
-            const blob = lastItem instanceof File ? lastItem : (lastItem.getAsFile ? lastItem.getAsFile() : lastItem.getAsBlob());
+            if (!lastItem.types.some(type => type.startsWith('image/'))) return;
+            const blob = lastItem.getAsFile() || lastItem.getAsBlob();
             if (!blob) return;
-            const ext = (blob.type && blob.type.split('/')[1]) ? blob.type.split('/')[1] : 'png';
+            const ext = blob.type?.split('/')[1] || 'png';
             const file = new File([blob], `pasted-image.${ext}`, { type: blob.type });
             const dt = new DataTransfer();
             dt.items.add(file);
             const input = document.getElementById('imageUpload');
             input.files = dt.files;
             input.dispatchEvent(new Event('change', { bubbles: true }));
-        })();   
+        })
+        .catch(err => showNotification(`粘贴失败: ${err}`, 'error'));
     }
 
     function downloadImage() {
