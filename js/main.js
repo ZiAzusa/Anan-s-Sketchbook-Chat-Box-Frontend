@@ -51,6 +51,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const loadingOverlay = document.getElementById('loadingOverlay');
     const emotionButtonsContainer = document.getElementById('emotionButtonsContainer');
     const fontButtonsContainer = document.getElementById('fontButtonsContainer');
+    const imageUploadInput = document.getElementById('imageUpload');
     const totalResources = Object.keys(config.BASEIMAGE_MAPPING).length + 1 + Object.keys(config.FONT_FILE).length;
     let loadedResources = 0;
 
@@ -503,7 +504,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 previewContainer.innerHTML = `<img src="${URL.createObjectURL(gifState.file)}" alt="预览图">`;
                 previewContainer.style.display = 'block';
                 document.getElementById('uploadBtnLabel').textContent = '删除图片';
-                document.getElementById('imageUpload').value = '';
+                imageUploadInput.value = '';
                 startGifAnimation();
             }
             reader.readAsArrayBuffer(file);
@@ -520,7 +521,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 previewContainer.style.display = 'block';
                 generateImage();
                 document.getElementById('uploadBtnLabel').textContent = '删除图片';
-                document.getElementById('imageUpload').value = '';
+                imageUploadInput.value = '';
             }
             img.src = event.target.result;
         }
@@ -535,7 +536,7 @@ document.addEventListener('DOMContentLoaded', () => {
         previewContainer.style.display = 'none';
         generateImage();
         document.getElementById('uploadBtnLabel').textContent = '选择图片';
-        document.getElementById('imageUpload').value = '';
+        imageUploadInput.value = '';
     }
 
     function copyCanvasToClipboard() {
@@ -561,9 +562,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const file = new File([blob], `pasted-image.${imageTypes[0].split('/')[1] || 'png'}`, { type: blob.type });
             const dt = new DataTransfer();
             dt.items.add(file);
-            const input = document.getElementById('imageUpload');
-            input.files = dt.files;
-            input.dispatchEvent(new Event('change', { bubbles: true }));
+            imageUploadInput.value = '';
+            imageUploadInput.files = dt.files;
+            handleImageUpload({ target: imageUploadInput });
         })
         .catch(err => showNotification(`粘贴失败: ${err}`, 'error'));
     }
