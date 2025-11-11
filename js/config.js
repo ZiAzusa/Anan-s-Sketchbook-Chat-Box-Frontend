@@ -35,7 +35,7 @@ window.APP_CONFIG = {
             TEXT_BOX_TOPLEFT: [119, 490], // 魔女化表情单独配置
             IMAGE_BOX_BOTTOMRIGHT: [540, 610],
             TEXT_COLOR: '#eeeeee',
-            BRACKET_COLOR: '#6a5acd',
+            BRACKET_COLOR: '#8b70ff',
             TEXT_STROKE_ENABLED: true,
             TEXT_STROKE_COLOR: '#111111',
             USE_BASE_OVERLAY: false,
