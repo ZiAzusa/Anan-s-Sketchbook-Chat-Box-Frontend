@@ -552,24 +552,23 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function pauseClipboardToCanvas(e) {
+    function pauseClipboardToCanvas() {
         if (!loadComplete) return;
-        const clipboardData = e.clipboardData || window.clipboardData;
-        if (!clipboardData) return;
-        const items = clipboardData.items || clipboardData.files || [];
-        if (items.length <= 0) return;
-        const lastItem = items[items.length - 1];
-        const mime = lastItem.type || '';
-        if (mime.indexOf('image') == -1) return;
-        const blob = lastItem instanceof File ? lastItem : (lastItem.getAsFile ? lastItem.getAsFile() : lastItem.getAsBlob());
-        if (!blob) return;
-        const ext = (blob.type && blob.type.split('/')[1]) ? blob.type.split('/')[1] : 'png';
-        const file = new File([blob], `pasted-image.${ext}`, { type: blob.type });
-        const dt = new DataTransfer();
-        dt.items.add(file);
-        const input = document.getElementById('imageUpload');
-        input.files = dt.files;
-        input.dispatchEvent(new Event('change', { bubbles: true }));
+        (async () => {
+            const clipboardData = await navigator.clipboard.read();
+            if (!clipboardData) return;
+            const lastItem = clipboardData[clipboardData.length - 1];
+            if (!lastItem.types.includes("image")) return;
+            const blob = lastItem instanceof File ? lastItem : (lastItem.getAsFile ? lastItem.getAsFile() : lastItem.getAsBlob());
+            if (!blob) return;
+            const ext = (blob.type && blob.type.split('/')[1]) ? blob.type.split('/')[1] : 'png';
+            const file = new File([blob], `pasted-image.${ext}`, { type: blob.type });
+            const dt = new DataTransfer();
+            dt.items.add(file);
+            const input = document.getElementById('imageUpload');
+            input.files = dt.files;
+            input.dispatchEvent(new Event('change', { bubbles: true }));
+        })();   
     }
 
     function downloadImage() {
