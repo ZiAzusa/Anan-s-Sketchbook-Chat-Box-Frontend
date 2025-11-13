@@ -382,10 +382,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const text = document.getElementById('textInput').value.trim();
         const { config: emotionCfg } = getEmotionCfg(currentEmotion);
         const currentToken = ++textRenderToken;
-        drawBaseImage();
         if (gifState.frames) {
+            drawBaseImage();
             drawGifFrame();
         } else if (uploadedImage) {
+            drawBaseImage();
             pasteImageAuto(uploadedImage);
         } else if (text) {
             drawText(text, currentFontSize, emotionCfg, currentToken);
@@ -407,6 +408,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const lines = wrapText(segments, fontSize, regionWidth, ctx, finalFont);
             const totalTextHeight = lines.length * lineHeight;
             const yStart = y1 + (regionHeight - totalTextHeight) / 2;
+            drawBaseImage();
             ctx.font = `${fontSize}px ${finalFont}`;
             ctx.textBaseline = 'top';
             const strokeEnabled = (typeof emotionCfg.TEXT_STROKE_ENABLED !== 'undefined')
