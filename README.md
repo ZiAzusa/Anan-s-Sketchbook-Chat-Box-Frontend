@@ -1,6 +1,8 @@
 # 安安的素描本聊天框 Frontend Ver.
 
-本分支是 <a href="https://github.com/MarkCup-Official/Anan-s-Sketchbook-Chat-Box">MarkCup-Official/Anan-s-Sketchbook-Chat-Box</a> 的前端网页复现，避免了对Python及pywin32的依赖，但需要手动从浏览器下载生成好的图片
+本分支是 <a href="https://github.com/MarkCup-Official/Anan-s-Sketchbook-Chat-Box">MarkCup-Official/Anan-s-Sketchbook-Chat-Box</a> 的前端网页复现，避免了对Python及pywin32的依赖，但也缺失了Win32API带来的便捷。
+
+初衷是方便移动端也可以用简单的方式绘制安安的素描本。
 
 2025/11/09 添加了点击预览区域或按下Ctrl+C即可将生成的安安复制到剪贴板的功能
 
