@@ -46,8 +46,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const emotionButtonsContainer = document.getElementById('emotionButtonsContainer');
     const fontButtonsContainer = document.getElementById('fontButtonsContainer');
     const imageUploadInput = document.getElementById('imageUpload');
+    const measureCache = new Map();
     let loadedResources = 0;
     let textRenderToken = 0;
+    let rafPending = false;
+    let lastRequestedArgs = null;
 
     function getEmotionCfg(emotionName) {
         const entry = config.BASEIMAGE_MAPPING[emotionName];
@@ -177,6 +180,18 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                     if (loaded >= imagePaths.length) resolve();
                 }
+                img.onerror = () => {
+                    loaded++;
+                    loadedResources++;
+                    updateProgress();
+                    const emotion = pathMap[path];
+                    if (emotion) {
+                        delete baseImages[emotion];
+                        const btn = emotionButtonsContainer.querySelector(`button[data-emotion="${emotion}"]`);
+                        if (btn) btn.remove();
+                    }
+                    if (loaded >= imagePaths.length) resolve();
+                }
             });
         });
     }
@@ -276,6 +291,13 @@ document.addEventListener('DOMContentLoaded', () => {
             clearTimeout(gifState.timer);
             gifState.timer = null;
         }
+        if (gifState.frames) {
+            gifState.frames.forEach(f => {
+                if (f.bitmap && f.bitmap.close) {
+                    try { f.bitmap.close(); } catch (_) {}
+                }
+            });
+        }
         gifState = {
             file: null,
             frames: null,
@@ -287,15 +309,16 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+
     function startGifAnimation() {
         if (!gifState.frames || !gifState.frames.length) return;
         const animate = () => {
             gifState.currentIndex = (gifState.currentIndex + 1) % gifState.frames.length;
-            generateImage();
+            requestGenerateImage();
             const delay = gifState.frames[gifState.currentIndex].delay || 100;
             gifState.timer = setTimeout(animate, delay);
         }
-        generateImage();
+        requestGenerateImage();
         gifState.timer = setTimeout(animate, gifState.frames[0].delay || 100);
     }
 
@@ -377,11 +400,25 @@ document.addEventListener('DOMContentLoaded', () => {
         ctx.drawImage(img, x, y, width, height);
     }
 
+    function requestGenerateImage() {
+        lastRequestedArgs = true;
+        if (rafPending) return;
+        rafPending = true;
+        requestAnimationFrame(() => {
+            rafPending = false;
+            if (lastRequestedArgs) {
+                lastRequestedArgs = null;
+                generateImage();
+            }
+        });
+    }
+
     function generateImage() {
         if (!loadComplete) return;
         const text = document.getElementById('textInput').value.trim();
         const { config: emotionCfg } = getEmotionCfg(currentEmotion);
         const currentToken = ++textRenderToken;
+        measureCache.clear();
         drawBaseImage();
         if (gifState.frames) {
             drawGifFrame();
@@ -395,6 +432,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function drawText(text, fontSize, emotionCfg, token) {
+        const startToken = textRenderToken;
+        if (token !== startToken) return;
         const targetFont = config.FONT_FILE[currentFont].family;
         checkFontLoaded(targetFont, fontSize, text).then(isLoaded => {
             if (token !== textRenderToken) return;
@@ -464,72 +503,83 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function wrapText(segments, fontSize, maxWidth, ctx, fontFamily) {
-        ctx.font = `${fontSize}px ${fontFamily}`
+        ctx.font = `${fontSize}px ${fontFamily}`;
         const lines = [];
         let currentLine = [];
         let currentWidth = 0;
-        const splitSingleLongSeg = (seg, remainingWidth) => {
-            const text = seg.text;
-            let start = 0;
-            for (let i = 1; i <= text.length; i++) {
-                const substr = text.slice(start, i);
-                const substrWidth = ctx.measureText(substr).width;
-                if (substrWidth > remainingWidth || i === text.length) {
-                    const cutIdx = substrWidth > remainingWidth ? i - 1 : i;
-                    const cutText = text.slice(start, cutIdx);
-                    currentLine.push({ ...seg, text: cutText });
+        const measureTextCached = (text) => {
+            if (!text) return 0;
+            let w = measureCache.get(text);
+            if (w !== undefined) return w;
+            w = ctx.measureText(text).width;
+            if (/[\u{1F300}-\u{1FAFF}]/u.test(text)) w += text.length * fontSize * 0.05;
+            measureCache.set(text, w);
+            return w;
+        };
+        for (const seg of segments) {
+            const parts = seg.text.split('\n');
+            for (let p = 0; p < parts.length; p++) {
+                const part = parts[p];
+                if (part) {
+                    const tokens = /[A-Za-z]/.test(part)
+                        ? (() => {
+                            const arr = [];
+                            let buf = '';
+                            for (const ch of part) {
+                                if (/[A-Za-z0-9]/.test(ch)) buf += ch;
+                                else { if (buf) arr.push(buf); arr.push(ch); buf = ''; }
+                            }
+                            if (buf) arr.push(buf);
+                            return arr;
+                        })()
+                        : [...part];
+                    for (const tk of tokens) {
+                        const w = measureTextCached(tk);
+                        if (currentWidth + w > maxWidth) {
+                            if (currentLine.length) {
+                                lines.push([...currentLine]);
+                                currentLine.length = 0;
+                                currentWidth = 0;
+                            }
+                            if (w > maxWidth) {
+                                let t = tk;
+                                let remain = maxWidth;
+                                while (t.length) {
+                                    let low = 1;
+                                    let high = t.length;
+                                    while (low < high) {
+                                        const mid = (low + high + 1) >> 1;
+                                        const mw = measureTextCached(t.slice(0, mid));
+                                        if (mw <= remain) low = mid;
+                                        else high = mid - 1;
+                                    }
+                                    const slice = t.slice(0, low);
+                                    currentLine.push({ ...seg, text: slice });
+                                    currentWidth += measureTextCached(slice);
+                                    t = t.slice(low);
+                                    if (!t.length) break;
+                                    lines.push([...currentLine]);
+                                    currentLine.length = 0;
+                                    currentWidth = 0;
+                                    remain = maxWidth;
+                                }
+                            } else {
+                                currentLine.push({ ...seg, text: tk });
+                                currentWidth = w;
+                            }
+                        } else {
+                            currentLine.push({ ...seg, text: tk });
+                            currentWidth += w;
+                        }
+                    }
+                }
+                if (p < parts.length - 1) {
                     lines.push([...currentLine]);
-                    currentLine = [];
+                    currentLine.length = 0;
                     currentWidth = 0;
-                    start = cutIdx;
-                    remainingWidth = maxWidth;
-                    i = cutIdx;
                 }
             }
         }
-        segments.forEach(seg => {
-            if (seg.text.includes('\n')) {
-                const parts = seg.text.split('\n');
-                parts.forEach((part, i) => {
-                    if (part) {
-                        const partWidth = ctx.measureText(part).width;
-                        if (currentWidth + partWidth > maxWidth) {
-                            if (currentLine.length) {
-                                lines.push([...currentLine]);
-                                currentLine = [];
-                                currentWidth = 0;
-                            }
-                            partWidth > maxWidth 
-                                ? splitSingleLongSeg({ ...seg, text: part }, maxWidth)
-                                : (currentLine.push({ ...seg, text: part }), currentWidth += partWidth);
-                        } else {
-                            currentLine.push({ ...seg, text: part });
-                            currentWidth += partWidth;
-                        }
-                    }
-                    if (i < parts.length - 1) {
-                        lines.push([...currentLine]);
-                        currentLine = [];
-                        currentWidth = 0;
-                    }
-                });
-            } else {
-                const segWidth = ctx.measureText(seg.text).width;
-                if (currentWidth + segWidth > maxWidth) {
-                    if (currentLine.length) {
-                        lines.push([...currentLine]);
-                        currentLine = [];
-                        currentWidth = 0;
-                    }
-                    segWidth > maxWidth 
-                        ? splitSingleLongSeg(seg, maxWidth)
-                        : (currentLine.push(seg), currentWidth += segWidth);
-                } else {
-                    currentLine.push(seg);
-                    currentWidth += segWidth;
-                }
-            }
-        });
         if (currentLine.length) lines.push(currentLine);
         return lines;
     }
@@ -540,14 +590,14 @@ document.addEventListener('DOMContentLoaded', () => {
         document.querySelectorAll('.emotion-buttons button').forEach(btn => btn.classList.toggle('active', btn.dataset.emotion === emotion));
         canvas.width = baseImages[emotion].width;
         canvas.height = baseImages[emotion].height;
-        generateImage();
+        requestGenerateImage();
     }
 
     function setFont(font) {
         if (!loadComplete) return;
         currentFont = font;
         document.querySelectorAll('.font-buttons button').forEach(btn => btn.classList.toggle('active', btn.dataset.font === font));
-        generateImage();
+        requestGenerateImage();
     }
 
     function handleUploadButtonClick(e) {
@@ -610,7 +660,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const previewContainer = document.getElementById('previewImage');
                 previewContainer.innerHTML = `<img src="${event.target.result}" alt="预览图">`;
                 previewContainer.style.display = 'block';
-                generateImage();
+                requestGenerateImage();
                 document.getElementById('uploadBtnLabel').textContent = '删除图片';
                 imageUploadInput.value = '';
             }
@@ -625,7 +675,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const previewContainer = document.getElementById('previewImage');
         previewContainer.innerHTML = '';
         previewContainer.style.display = 'none';
-        generateImage();
+        requestGenerateImage();
         document.getElementById('uploadBtnLabel').textContent = '选择图片';
         imageUploadInput.value = '';
     }
@@ -703,7 +753,7 @@ document.addEventListener('DOMContentLoaded', () => {
             canvas.width = baseImages[currentEmotion].width;
             canvas.height = baseImages[currentEmotion].height;
             drawBaseImage();
-            document.getElementById('textInput').addEventListener('input', generateImage);
+            document.getElementById('textInput').addEventListener('input', requestGenerateImage);
             document.getElementById('imageUpload').addEventListener('change', handleImageUpload);
             document.getElementById('uploadBtnLabel').addEventListener('click', handleUploadButtonClick);
             document.getElementById('downloadBtn').addEventListener('click', downloadImage);
@@ -714,7 +764,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 currentFontSize = parseInt(e.target.value);
                 fontSizeValue.textContent = `${currentFontSize}px`;
                 updatefontSizeCtrl(e.target);
-                generateImage();
+                requestGenerateImage();
             });
             document.addEventListener('keydown', (e) => {
                 if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'c' && document.activeElement.id !== 'textInput' && !e.shiftKey && !e.altKey) {
