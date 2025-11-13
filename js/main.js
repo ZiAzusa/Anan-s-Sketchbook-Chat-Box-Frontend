@@ -382,11 +382,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const text = document.getElementById('textInput').value.trim();
         const { config: emotionCfg } = getEmotionCfg(currentEmotion);
         const currentToken = ++textRenderToken;
+        drawBaseImage();
         if (gifState.frames) {
-            drawBaseImage();
             drawGifFrame();
         } else if (uploadedImage) {
-            drawBaseImage();
             pasteImageAuto(uploadedImage);
         } else if (text) {
             drawText(text, currentFontSize, emotionCfg, currentToken);
