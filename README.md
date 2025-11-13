@@ -10,6 +10,8 @@
 
 2025/11/11 重构了配置文件，添加了魔女化表情
 
+2025/11/13 内置字体使用了字体分包项目 [中文 Web Font 切割工具](https://github.com/KonghaYao/cn-font-split) 进行分包，优化使用体验
+
 可以访问这里使用：https://anan.lie.moe
 
 ## AI声明

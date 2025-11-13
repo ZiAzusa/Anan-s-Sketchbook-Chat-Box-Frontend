@@ -159,7 +159,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 imagePaths.push(PATH);
             });
             imagePaths.push(config.DEFAULT.BASE_OVERLAY_FILE);
-
             let loaded = 0;
             imagePaths.forEach(path => {
                 const img = new Image();
@@ -183,16 +182,54 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function preloadAllFonts() {
         const fontPromises = Object.keys(config.FONT_FILE).map(fontKey => {
-            const fontInfo = config.FONT_FILE[fontKey];
-            const fontFace = new FontFace(fontKey, `url(${fontInfo.file})`, { style: 'normal', weight: '400' });
-            return fontFace.load()
-            .then(() => document.fonts.add(fontFace))
-            .finally(() => {
-                loadedResources++;
-                updateProgress();
-            });
+            const { file: filePath } = config.FONT_FILE[fontKey];
+            const fileType = ((p) => p.endsWith('/')
+                ? 'folder' : p.endsWith('.css')
+                ? 'css' : ['.ttf', '.otf', '.woff', '.woff2'].includes(`.${p.split('.').pop()?.toLowerCase()}`)
+                ? 'font' : null
+            )(filePath);
+            if (fileType == 'folder' || fileType == 'css') {
+                const cssHref = fileType === 'folder' ? `${filePath.replace(/\/$/, '')}/result.css` : filePath;
+                return new Promise(resolve => {
+                    const link = document.createElement('link');
+                    link.rel = 'stylesheet';
+                    link.href = cssHref;
+                    link.onload = link.onerror = () => {
+                        loadedResources++;
+                        updateProgress();
+                        resolve();
+                    };
+                    document.head.appendChild(link);
+                });
+            }
+            if (fileType == 'font') {
+                return new FontFace(fontKey, `url(${filePath})`, { style: 'normal', weight: '400' })
+                    .load()
+                    .then(font => document.fonts.add(font))
+                    .finally(() => {
+                        loadedResources++;
+                        updateProgress();
+                    });
+            }
+            loadedResources++;
+            updateProgress();
+            return Promise.resolve();
         });
         return Promise.allSettled(fontPromises);
+    }
+
+    function checkFontLoaded(fontFamily, fontSize, text) {
+        const font = `${fontSize}px ${fontFamily}`;
+        const checkText = text.trim() || '水';
+        return new Promise(resolve => {
+            document.fonts.check(font, checkText)
+                ? resolve(true) : Promise.race([
+                    document.fonts.load(font, checkText),
+                    new Promise(rej => setTimeout(() => rej(), 5000))
+                ])
+                .then(() => resolve(true))
+                .catch(() => resolve(false));
+        });
     }
 
     function updatefontSizeCtrl(target) {
@@ -355,27 +392,30 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function drawTextWithFontSize(text, fontSize, emotionCfg) {
-        const { topLeft: [x1, y1], bottomRight: [x2, y2] } = getBoxCoordinates();
-        const regionWidth = x2 - x1;
-        const regionHeight = y2 - y1;
-        const segments = parseColorSegments(text, emotionCfg);
-        const lineHeight = fontSize * 1.2;
-        const lines = wrapText(segments, fontSize, regionWidth, ctx);
-        const totalTextHeight = lines.length * lineHeight;
-        const yStart = y1 + (regionHeight - totalTextHeight) / 2;
-            ctx.font = `${fontSize}px ${config.FONT_FILE[currentFont].family}`;
+        const targetFont = config.FONT_FILE[currentFont].family;
+        checkFontLoaded(targetFont, fontSize, text).then(isLoaded => {
+            const finalFont = isLoaded ? targetFont : '';
+            const { topLeft: [x1, y1], bottomRight: [x2, y2] } = getBoxCoordinates();
+            const regionWidth = x2 - x1;
+            const regionHeight = y2 - y1;
+            const segments = parseColorSegments(text, emotionCfg);
+            const lineHeight = fontSize * 1.2;
+            const lines = wrapText(segments, fontSize, regionWidth, ctx, finalFont);
+            const totalTextHeight = lines.length * lineHeight;
+            const yStart = y1 + (regionHeight - totalTextHeight) / 2;
+            ctx.font = `${fontSize}px ${finalFont}`;
             ctx.textBaseline = 'top';
             const strokeEnabled = (typeof emotionCfg.TEXT_STROKE_ENABLED !== 'undefined')
                 ? emotionCfg.TEXT_STROKE_ENABLED
                 : (config.DEFAULT && config.DEFAULT.TEXT_STROKE_ENABLED) || false;
             const strokeColor = emotionCfg.TEXT_STROKE_COLOR || (config.DEFAULT && config.DEFAULT.TEXT_STROKE_COLOR) || '#ffffff';
             const strokeWidth = Math.max(2, Math.round(fontSize / 12));
-        lines.forEach((line, index) => {
-            let x = x1;
-            const y = yStart + index * lineHeight;
-            const lineWidth = line.reduce((sum, seg) => sum + ctx.measureText(seg.text).width, 0);
-            if (lineWidth < regionWidth) x += (regionWidth - lineWidth) / 2;
-            line.forEach(seg => {
+            lines.forEach((line, index) => {
+                let x = x1;
+                const y = yStart + index * lineHeight;
+                const lineWidth = line.reduce((sum, seg) => sum + ctx.measureText(seg.text).width, 0);
+                if (lineWidth < regionWidth) x += (regionWidth - lineWidth) / 2;
+                line.forEach(seg => {
                     if (strokeEnabled) {
                         ctx.lineWidth = strokeWidth;
                         ctx.strokeStyle = strokeColor;
@@ -386,6 +426,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     ctx.fillStyle = seg.color;
                     ctx.fillText(seg.text, x, y);
                     x += ctx.measureText(seg.text).width;
+                });
             });
         });
     }
@@ -416,8 +457,8 @@ document.addEventListener('DOMContentLoaded', () => {
         return segments;
     }
 
-    function wrapText(segments, fontSize, maxWidth, ctx) {
-        ctx.font = `${fontSize}px ${config.FONT_FILE[currentFont].family}`;
+    function wrapText(segments, fontSize, maxWidth, ctx, fontFamily) {
+        ctx.font = `${fontSize}px ${fontFamily}`
         const lines = [];
         let currentLine = [];
         let currentWidth = 0;
@@ -531,7 +572,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const bitmap = await createImageBitmap(imgData);
                     frames.push({
                         bitmap,
-                        delay: (info.delay > 0 ? info.delay : 10) * 10, // 转换为ms
+                        delay: (info.delay > 0 ? info.delay : 10) * 10,
                         dims: { width: gifReader.width, height: gifReader.height }
                     });
                 }

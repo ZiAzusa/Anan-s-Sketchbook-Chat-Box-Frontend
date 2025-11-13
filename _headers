@@ -11,5 +11,14 @@
   Cache-Control: public, max-age=31536000, must-revalidate
   Access-Control-Allow-Origin: *
 
+/*.ttf
+  Cache-Control: public, max-age=31536000, must-revalidate
+
+/*.otf
+  Cache-Control: public, max-age=31536000, must-revalidate
+
+/*.woff
+  Cache-Control: public, max-age=31536000, must-revalidate
+
 /*.woff2
   Cache-Control: public, max-age=31536000, must-revalidate
