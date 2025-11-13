@@ -47,6 +47,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const fontButtonsContainer = document.getElementById('fontButtonsContainer');
     const imageUploadInput = document.getElementById('imageUpload');
     let loadedResources = 0;
+    let textRenderToken = 0;
 
     function getEmotionCfg(emotionName) {
         const entry = config.BASEIMAGE_MAPPING[emotionName];
@@ -380,20 +381,23 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!loadComplete) return;
         const text = document.getElementById('textInput').value.trim();
         const { config: emotionCfg } = getEmotionCfg(currentEmotion);
+        const currentToken = ++textRenderToken;
         drawBaseImage();
         if (gifState.frames) {
             drawGifFrame();
         } else if (uploadedImage) {
             pasteImageAuto(uploadedImage);
         } else if (text) {
-            drawTextWithFontSize(text, currentFontSize, emotionCfg);
+            drawText(text, currentFontSize, emotionCfg, currentToken);
+            return;
         }
         if (emotionCfg.USE_BASE_OVERLAY && overlayImage.complete) ctx.drawImage(overlayImage, 0, 0);
     }
 
-    function drawTextWithFontSize(text, fontSize, emotionCfg) {
+    function drawText(text, fontSize, emotionCfg, token) {
         const targetFont = config.FONT_FILE[currentFont].family;
         checkFontLoaded(targetFont, fontSize, text).then(isLoaded => {
+            if (token !== textRenderToken) return;
             const finalFont = isLoaded ? targetFont : '';
             const { topLeft: [x1, y1], bottomRight: [x2, y2] } = getBoxCoordinates();
             const regionWidth = x2 - x1;
@@ -428,6 +432,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     x += ctx.measureText(seg.text).width;
                 });
             });
+            if (emotionCfg.USE_BASE_OVERLAY && overlayImage.complete) ctx.drawImage(overlayImage, 0, 0);
         });
     }
 
