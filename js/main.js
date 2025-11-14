@@ -280,42 +280,89 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function getBoxCoordinates() {
         const { config: emotionCfg } = getEmotionCfg(currentEmotion);
-        return {
-            topLeft: emotionCfg.TEXT_BOX_TOPLEFT,
-            bottomRight: emotionCfg.IMAGE_BOX_BOTTOMRIGHT
-        }
+        const [x1, y1] = emotionCfg.TEXT_BOX_TOPLEFT;
+        const [x2, y2] = emotionCfg.IMAGE_BOX_BOTTOMRIGHT;
+        return { x1, y1, x2, y2 };
     }
 
-    function drawMixedLayout(img, text, fontSize, emotionCfg, token) {
-        const startToken = textRenderToken;
-        if (token !== startToken) return;
+    function drawFittedImage(img, box) {
+        const { x1, y1, x2, y2 } = box;
+        const maxWidth = x2 - x1;
+        const maxHeight = y2 - y1;
+        let width = img.width;
+        let height = img.height;
+        if (width > maxWidth) {
+            const ratio = maxWidth / width;
+            width = maxWidth;
+            height *= ratio;
+        }
+        if (height > maxHeight) {
+            const ratio = maxHeight / height;
+            height = maxHeight;
+            width *= ratio;
+        }
+        const x = x1 + (maxWidth - width) / 2;
+        const y = y1 + (maxHeight - height) / 2;
+        ctx.drawImage(img, x, y, width, height);
+    }
+
+    function drawTextBlock(text, fontSize, fontFamily, box, emotionCfg) {
+        const { x1, y1, x2, y2 } = box;
+        const w = x2 - x1;
+        const h = y2 - y1;
+        const segments = parseColorSegments(text, emotionCfg);
+        ctx.font = `${fontSize}px ${fontFamily}`;
+        ctx.textBaseline = "top";
+        ctx.textAlign = "left";
+        const lineHeight = fontSize * 1.2;
+        const lines = wrapText(segments, fontSize, w, ctx, fontFamily);
+        const totalHeight = lines.length * lineHeight;
+        const yStart = y1 + (h - totalHeight) / 2;
+        const strokeEnabled = emotionCfg.TEXT_STROKE_ENABLED || false;
+        const strokeColor = emotionCfg.TEXT_STROKE_COLOR || '#ffffff';
+        const strokeWidth = Math.min(Math.max(Math.round(fontSize / 12), 1), 2);
+        lines.forEach((line, i) => {
+            const y = yStart + i * lineHeight;
+            const rowWidth = line.reduce((s, seg) => s + ctx.measureText(seg.text).width, 0);
+            let x = x1 + (w - rowWidth) / 2;
+            line.forEach(seg => {
+                if (strokeEnabled) {
+                    ctx.lineWidth = strokeWidth;
+                    ctx.strokeStyle = strokeColor;
+                    ctx.strokeText(seg.text, x, y);
+                }
+                ctx.fillStyle = seg.color;
+                ctx.fillText(seg.text, x, y);
+                x += ctx.measureText(seg.text).width;
+            });
+        });
+    }
+
+    function layoutMixedContent(img, text, fontSize, emotionCfg, token) {
+        if (token !== textRenderToken) return;
         const fontFamily = config.FONT_FILE[currentFont].family;
         checkFontLoaded(fontFamily, fontSize, text).then(isLoaded => {
             if (token !== textRenderToken) return;
             const finalFont = isLoaded ? fontFamily : '';
-            const { topLeft: [x1, y1], bottomRight: [x2, y2] } = getBoxCoordinates();
+            const box = getBoxCoordinates();
+            const { x1, y1, x2, y2 } = box;
             const regionWidth = x2 - x1;
             const regionHeight = y2 - y1;
             const spacing = 10;
             const isVertical = img.height * (regionWidth / regionHeight) > img.width;
-            let imgTL, imgBR, textTL, textBR;
+            let imgBox = {};
+            let textBox = {};
             if (isVertical) {
                 const half = (regionWidth - spacing) / 2;
-                imgTL = [x1, y1];
-                imgBR = [x1 + half, y2];
-                textTL = [x1 + half + spacing, y1];
-                textBR = [x2, y2];
+                imgBox = { x1, y1, x2: x1 + half, y2 };
+                textBox = { x1: x1 + half + spacing, y1, x2, y2 };
             } else {
                 const textHeight = Math.min(regionHeight / 2, 100);
-                imgTL = [x1, y1];
-                imgBR = [x2, y1 + (regionHeight - textHeight)];
-                textTL = [x1, y1 + (regionHeight - textHeight) + spacing];
-                textBR = [x2, y2];
+                imgBox = { x1, y1, x2, y2: y1 + (regionHeight - textHeight) };
+                textBox = { x1, y1: imgBox.y2 + spacing, x2, y2 };
             }
-            drawBaseImage();
-            drawMixedImage(img, imgTL, imgBR);
-            drawMixedText(text, fontSize, finalFont, textTL, textBR, emotionCfg);
-            if (emotionCfg.USE_BASE_OVERLAY && overlayImage.complete) ctx.drawImage(overlayImage, 0, 0);
+            drawFittedImage(img, imgBox);
+            drawTextBlock(text, fontSize, finalFont, textBox, emotionCfg);
         });
     }
 
@@ -326,8 +373,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         if (gifState.frames) {
             gifState.frames.forEach(f => {
-                if (f.bitmap && f.bitmap.close) {
+                if (f.bitmap && f.bitmap.close && typeof f.bitmap.close === 'function') {
                     try { f.bitmap.close(); } catch (_) {}
+                } else {
+                    f.bitmap = null;
                 }
             });
         }
@@ -342,7 +391,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-
     function startGifAnimation() {
         if (!gifState.frames || !gifState.frames.length) return;
         const animate = () => {
@@ -355,64 +403,8 @@ document.addEventListener('DOMContentLoaded', () => {
         gifState.timer = setTimeout(animate, gifState.frames[0].delay || 100);
     }
 
-    function drawMixedGif(text, fontSize, emotionCfg, token) {
-        const startToken = textRenderToken;
-        if (token !== startToken) return;
-        const fontFamily = config.FONT_FILE[currentFont].family;
-        checkFontLoaded(fontFamily, fontSize, text).then(isLoaded => {
-            if (token !== textRenderToken) return;
-            const finalFont = isLoaded ? fontFamily : '';
-            const { topLeft: [x1, y1], bottomRight: [x2, y2] } = getBoxCoordinates();
-            const regionWidth = x2 - x1;
-            const regionHeight = y2 - y1;
-            const spacing = 10;
-            const frame = gifState.frames[gifState.currentIndex];
-            const isVertical = frame.dims.height * (regionWidth / regionHeight) > frame.dims.width;
-            let imgTL, imgBR, textTL, textBR;
-            if (isVertical) {
-                const half = (regionWidth - spacing) / 2;
-                imgTL = [x1, y1];
-                imgBR = [x1 + half, y2];
-                textTL = [x1 + half + spacing, y1];
-                textBR = [x2, y2];
-            } else {
-                const textHeight = Math.min(regionHeight / 2, 100);
-                imgTL = [x1, y1];
-                imgBR = [x2, y1 + (regionHeight - textHeight)];
-                textTL = [x1, y1 + (regionHeight - textHeight) + spacing];
-                textBR = [x2, y2];
-            }
-            drawBaseImage();
-            drawGifFrame(imgTL, imgBR);
-            drawMixedText(text, fontSize, finalFont, textTL, textBR, emotionCfg);
-            if (emotionCfg.USE_BASE_OVERLAY && overlayImage.complete) ctx.drawImage(overlayImage, 0, 0);
-        });
-    }
-
-    function drawGifFrame(tl, br) {
-        const frame = gifState.frames[gifState.currentIndex];
-        const x1 = tl[0], y1 = tl[1], x2 = br[0], y2 = br[1];
-        const maxWidth = x2 - x1;
-        const maxHeight = y2 - y1;
-        let width = frame.dims.width;
-        let height = frame.dims.height;
-        if (width > maxWidth) {
-            const ratio = maxWidth / width;
-            width = maxWidth;
-            height *= ratio;
-        }
-        if (height > maxHeight) {
-            const ratio = maxHeight / height;
-            height = maxHeight;
-            width *= ratio;
-        }
-        const x = x1 + (maxWidth - width) / 2;
-        const y = y1 + (maxHeight - height) / 2;
-        ctx.drawImage(frame.bitmap, x, y, width, height);
-    }
-
     function composeGifBlob() {
-        return new Promise((resolve, reject) => {
+        return new Promise(async (resolve, reject) => {
             const gif = new window.GIF({
                 workers: 2,
                 quality: 10,
@@ -420,22 +412,31 @@ document.addEventListener('DOMContentLoaded', () => {
                 height: canvas.height,
                 workerScript: 'js/gif/gif.worker.js'
             });
+            const text = document.getElementById('textInput').value.trim();
+            const token = ++textRenderToken;
             const originalIndex = gifState.currentIndex;
-            (async () => {
+            const emotionCfg = getEmotionCfg(currentEmotion).config;
+            try {
                 for (let i = 0; i < gifState.frames.length; i++) {
-                    drawBaseImage();
                     gifState.currentIndex = i;
-                    drawGifFrame();
-                    const { config: emotionCfg } = getEmotionCfg(currentEmotion);
+                    const frame = gifState.frames[i];
+                    text
+                        ? layoutMixedContent(frame.bitmap, text, currentFontSize, emotionCfg, token)
+                        : drawFittedImage(frame.bitmap, getBoxCoordinates());
                     if (emotionCfg.USE_BASE_OVERLAY && overlayImage.complete) ctx.drawImage(overlayImage, 0, 0);
-                    gif.addFrame(canvas, { copy: true, delay: gifState.frames[i].delay || 100 });
-                    await new Promise(r => setTimeout(r, 0));
+                    gif.addFrame(canvas, {
+                        copy: true,
+                        delay: frame.delay || 100
+                    });
+                    await new Promise(r => requestAnimationFrame(r));
                 }
                 gifState.currentIndex = originalIndex;
                 gif.on('finished', resolve);
                 gif.on('abort', () => reject(new Error('GIF编码被中止')));
                 gif.render();
-            })();
+            } catch (err) {
+                reject(err);
+            }
         });
     }
 
@@ -445,124 +446,14 @@ document.addEventListener('DOMContentLoaded', () => {
         ctx.drawImage(baseImages[currentEmotion], 0, 0);
     }
 
-    function drawMixedImage(img, tl, br) {
-        const [x1, y1] = tl;
-        const [x2, y2] = br;
-        const maxWidth = x2 - x1;
-        const maxHeight = y2 - y1;
-        let width = img.width;
-        let height = img.height;
-        if (width > maxWidth) {
-            const ratio = maxWidth / width;
-            width = maxWidth;
-            height *= ratio;
-        }
-        if (height > maxHeight) {
-            const ratio = maxHeight / height;
-            height = maxHeight;
-            width *= ratio;
-        }
-        const x = x1 + (maxWidth - width) / 2;
-        const y = y1 + (maxHeight - height) / 2;
-        ctx.drawImage(img, x, y, width, height);
-    }
-
-
-    function drawImage(img) {
-        const { topLeft: [x1, y1], bottomRight: [x2, y2] } = getBoxCoordinates();
-        const maxWidth = x2 - x1;
-        const maxHeight = y2 - y1;
-        let width = img.width;
-        let height = img.height;
-        if (width > maxWidth) {
-            const ratio = maxWidth / width;
-            width = maxWidth;
-            height = height * ratio;
-        }
-        if (height > maxHeight) {
-            const ratio = maxHeight / height;
-            height = maxHeight;
-            width = width * ratio;
-        }
-        const x = x1 + (maxWidth - width) / 2;
-        const y = y1 + (maxHeight - height) / 2;
-        ctx.drawImage(img, x, y, width, height);
-    }
-
-    function drawMixedText(text, fontSize, fontFamily, tl, br, emotionCfg) {
-        const [x1, y1] = tl;
-        const [x2, y2] = br;
-        const w = x2 - x1;
-        const h = y2 - y1;
-        const segments = parseColorSegments(text, emotionCfg);
-        ctx.font = `${fontSize}px ${fontFamily}`;
-        const lineHeight = fontSize * 1.2;
-        const lines = wrapText(segments, fontSize, w, ctx, fontFamily);
-        const totalHeight = lines.length * lineHeight;
-        const yStart = y1 + (h - totalHeight) / 2;
-        const strokeEnabled = emotionCfg.TEXT_STROKE_ENABLED || false;
-        const strokeColor = emotionCfg.TEXT_STROKE_COLOR || '#ffffff';
-        const strokeWidth = Math.max(2, Math.round(fontSize / 12));
-        lines.forEach((line, i) => {
-            let x = x1;
-            const y = yStart + i * lineHeight;
-            const lw = line.reduce((s, seg) => s + ctx.measureText(seg.text).width, 0);
-            x += (w - lw) / 2;
-            line.forEach(seg => {
-                if (strokeEnabled) {
-                    ctx.lineWidth = strokeWidth;
-                    ctx.strokeStyle = strokeColor;
-                    ctx.strokeText(seg.text, x, y);
-                }
-                ctx.fillStyle = seg.color;
-                ctx.fillText(seg.text, x, y);
-                x += ctx.measureText(seg.text).width;
-            });
-        });
-    }
-
     function drawText(text, fontSize, emotionCfg, token) {
-        const startToken = textRenderToken;
-        if (token !== startToken) return;
-        const targetFont = config.FONT_FILE[currentFont].family;
-        checkFontLoaded(targetFont, fontSize, text).then(isLoaded => {
+        if (token !== textRenderToken) return;
+        const fontFamily = config.FONT_FILE[currentFont].family;
+        checkFontLoaded(fontFamily, fontSize, text).then(isLoaded => {
             if (token !== textRenderToken) return;
-            const finalFont = isLoaded ? targetFont : '';
-            const { topLeft: [x1, y1], bottomRight: [x2, y2] } = getBoxCoordinates();
-            const regionWidth = x2 - x1;
-            const regionHeight = y2 - y1;
-            const segments = parseColorSegments(text, emotionCfg);
-            const lineHeight = fontSize * 1.2;
-            const lines = wrapText(segments, fontSize, regionWidth, ctx, finalFont);
-            const totalTextHeight = lines.length * lineHeight;
-            const yStart = y1 + (regionHeight - totalTextHeight) / 2;
-            drawBaseImage();
-            ctx.font = `${fontSize}px ${finalFont}`;
-            ctx.textBaseline = 'top';
-            const strokeEnabled = (typeof emotionCfg.TEXT_STROKE_ENABLED !== 'undefined')
-                ? emotionCfg.TEXT_STROKE_ENABLED
-                : (config.DEFAULT && config.DEFAULT.TEXT_STROKE_ENABLED) || false;
-            const strokeColor = emotionCfg.TEXT_STROKE_COLOR || (config.DEFAULT && config.DEFAULT.TEXT_STROKE_COLOR) || '#ffffff';
-            const strokeWidth = Math.max(2, Math.round(fontSize / 12));
-            lines.forEach((line, index) => {
-                let x = x1;
-                const y = yStart + index * lineHeight;
-                const lineWidth = line.reduce((sum, seg) => sum + ctx.measureText(seg.text).width, 0);
-                if (lineWidth < regionWidth) x += (regionWidth - lineWidth) / 2;
-                line.forEach(seg => {
-                    if (strokeEnabled) {
-                        ctx.lineWidth = strokeWidth;
-                        ctx.strokeStyle = strokeColor;
-                        ctx.lineJoin = 'round';
-                        ctx.miterLimit = 2;
-                        ctx.strokeText(seg.text, x, y);
-                    }
-                    ctx.fillStyle = seg.color;
-                    ctx.fillText(seg.text, x, y);
-                    x += ctx.measureText(seg.text).width;
-                });
-            });
-            if (emotionCfg.USE_BASE_OVERLAY && overlayImage.complete) ctx.drawImage(overlayImage, 0, 0);
+            const finalFont = isLoaded ? fontFamily : '';
+            const box = getBoxCoordinates();
+            drawTextBlock(text, fontSize, finalFont, box, emotionCfg);
         });
     }
 
@@ -691,22 +582,21 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!loadComplete) return;
         const text = document.getElementById('textInput').value.trim();
         const { config: emotionCfg } = getEmotionCfg(currentEmotion);
-        const currentToken = ++textRenderToken;
+        const token = ++textRenderToken;
         measureCache.clear();
         drawBaseImage();
         if (gifState.frames && text) {
-            drawMixedGif(text, currentFontSize, emotionCfg, currentToken);
-            return;
+            const frame = gifState.frames[gifState.currentIndex];
+            layoutMixedContent(frame.bitmap, text, currentFontSize, emotionCfg, token);
         } else if (gifState.frames) {
-            drawGifFrame();
+            const frame = gifState.frames[gifState.currentIndex];
+            drawFittedImage(frame.bitmap, getBoxCoordinates());
         } else if (uploadedImage && text) {
-            drawMixedLayout(uploadedImage, text, currentFontSize, emotionCfg, currentToken);
-            return;
+            layoutMixedContent(uploadedImage, text, currentFontSize, emotionCfg, token);
         } else if (uploadedImage) {
-            drawImage(uploadedImage);
+            drawFittedImage(uploadedImage, getBoxCoordinates());
         } else if (text) {
-            drawText(text, currentFontSize, emotionCfg, currentToken);
-            return;
+            drawText(text, currentFontSize, emotionCfg, token);
         }
         if (emotionCfg.USE_BASE_OVERLAY && overlayImage.complete) ctx.drawImage(overlayImage, 0, 0);
     }
