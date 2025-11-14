@@ -30,6 +30,12 @@ window.APP_CONFIG = {
         '无语': 'images/base/无语.png',
         '脸红': 'images/base/脸红.png',
         '病娇': 'images/base/病娇.png',
+        '闭眼': 'images/base/闭眼.png',
+        '难受': 'images/base/难受.png',
+        '害怕': 'images/base/害怕.png',
+        '激动': 'images/base/激动.png',
+        '惊讶': 'images/base/惊讶.png',
+        '哭泣': 'images/base/哭泣.png',
         '魔女化': {
             PATH: 'images/base/魔女化.png',
             TEXT_BOX_TOPLEFT: [119, 490], // 魔女化表情单独配置
