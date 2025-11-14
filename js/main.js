@@ -286,6 +286,39 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    function drawMixedLayout(img, text, fontSize, emotionCfg, token) {
+        const startToken = textRenderToken;
+        if (token !== startToken) return;
+        const fontFamily = config.FONT_FILE[currentFont].family;
+        checkFontLoaded(fontFamily, fontSize, text).then(isLoaded => {
+            if (token !== textRenderToken) return;
+            const finalFont = isLoaded ? fontFamily : '';
+            const { topLeft: [x1, y1], bottomRight: [x2, y2] } = getBoxCoordinates();
+            const regionWidth = x2 - x1;
+            const regionHeight = y2 - y1;
+            const spacing = 10;
+            const isVertical = img.height * (regionWidth / regionHeight) > img.width;
+            let imgTL, imgBR, textTL, textBR;
+            if (isVertical) {
+                const half = (regionWidth - spacing) / 2;
+                imgTL = [x1, y1];
+                imgBR = [x1 + half, y2];
+                textTL = [x1 + half + spacing, y1];
+                textBR = [x2, y2];
+            } else {
+                const textHeight = Math.min(regionHeight / 2, 100);
+                imgTL = [x1, y1];
+                imgBR = [x2, y1 + (regionHeight - textHeight)];
+                textTL = [x1, y1 + (regionHeight - textHeight) + spacing];
+                textBR = [x2, y2];
+            }
+            drawBaseImage();
+            drawMixedImage(img, imgTL, imgBR);
+            drawMixedText(text, fontSize, finalFont, textTL, textBR, emotionCfg);
+            if (emotionCfg.USE_BASE_OVERLAY && overlayImage.complete) ctx.drawImage(overlayImage, 0, 0);
+        });
+    }
+
     function stopGifAnimation() {
         if (gifState.timer) {
             clearTimeout(gifState.timer);
@@ -322,10 +355,43 @@ document.addEventListener('DOMContentLoaded', () => {
         gifState.timer = setTimeout(animate, gifState.frames[0].delay || 100);
     }
 
-    function drawGifFrame() {
-        if (!gifState.frames) return;
-        const { topLeft: [x1, y1], bottomRight: [x2, y2] } = getBoxCoordinates();
+    function drawMixedGif(text, fontSize, emotionCfg, token) {
+        const startToken = textRenderToken;
+        if (token !== startToken) return;
+        const fontFamily = config.FONT_FILE[currentFont].family;
+        checkFontLoaded(fontFamily, fontSize, text).then(isLoaded => {
+            if (token !== textRenderToken) return;
+            const finalFont = isLoaded ? fontFamily : '';
+            const { topLeft: [x1, y1], bottomRight: [x2, y2] } = getBoxCoordinates();
+            const regionWidth = x2 - x1;
+            const regionHeight = y2 - y1;
+            const spacing = 10;
+            const frame = gifState.frames[gifState.currentIndex];
+            const isVertical = frame.dims.height * (regionWidth / regionHeight) > frame.dims.width;
+            let imgTL, imgBR, textTL, textBR;
+            if (isVertical) {
+                const half = (regionWidth - spacing) / 2;
+                imgTL = [x1, y1];
+                imgBR = [x1 + half, y2];
+                textTL = [x1 + half + spacing, y1];
+                textBR = [x2, y2];
+            } else {
+                const textHeight = Math.min(regionHeight / 2, 100);
+                imgTL = [x1, y1];
+                imgBR = [x2, y1 + (regionHeight - textHeight)];
+                textTL = [x1, y1 + (regionHeight - textHeight) + spacing];
+                textBR = [x2, y2];
+            }
+            drawBaseImage();
+            drawGifFrame(imgTL, imgBR);
+            drawMixedText(text, fontSize, finalFont, textTL, textBR, emotionCfg);
+            if (emotionCfg.USE_BASE_OVERLAY && overlayImage.complete) ctx.drawImage(overlayImage, 0, 0);
+        });
+    }
+
+    function drawGifFrame(tl, br) {
         const frame = gifState.frames[gifState.currentIndex];
+        const x1 = tl[0], y1 = tl[1], x2 = br[0], y2 = br[1];
         const maxWidth = x2 - x1;
         const maxHeight = y2 - y1;
         let width = frame.dims.width;
@@ -333,12 +399,12 @@ document.addEventListener('DOMContentLoaded', () => {
         if (width > maxWidth) {
             const ratio = maxWidth / width;
             width = maxWidth;
-            height = height * ratio;
+            height *= ratio;
         }
         if (height > maxHeight) {
             const ratio = maxHeight / height;
             height = maxHeight;
-            width = width * ratio;
+            width *= ratio;
         }
         const x = x1 + (maxWidth - width) / 2;
         const y = y1 + (maxHeight - height) / 2;
@@ -379,7 +445,30 @@ document.addEventListener('DOMContentLoaded', () => {
         ctx.drawImage(baseImages[currentEmotion], 0, 0);
     }
 
-    function pasteImageAuto(img) {
+    function drawMixedImage(img, tl, br) {
+        const [x1, y1] = tl;
+        const [x2, y2] = br;
+        const maxWidth = x2 - x1;
+        const maxHeight = y2 - y1;
+        let width = img.width;
+        let height = img.height;
+        if (width > maxWidth) {
+            const ratio = maxWidth / width;
+            width = maxWidth;
+            height *= ratio;
+        }
+        if (height > maxHeight) {
+            const ratio = maxHeight / height;
+            height = maxHeight;
+            width *= ratio;
+        }
+        const x = x1 + (maxWidth - width) / 2;
+        const y = y1 + (maxHeight - height) / 2;
+        ctx.drawImage(img, x, y, width, height);
+    }
+
+
+    function drawImage(img) {
         const { topLeft: [x1, y1], bottomRight: [x2, y2] } = getBoxCoordinates();
         const maxWidth = x2 - x1;
         const maxHeight = y2 - y1;
@@ -400,35 +489,36 @@ document.addEventListener('DOMContentLoaded', () => {
         ctx.drawImage(img, x, y, width, height);
     }
 
-    function requestGenerateImage() {
-        lastRequestedArgs = true;
-        if (rafPending) return;
-        rafPending = true;
-        requestAnimationFrame(() => {
-            rafPending = false;
-            if (lastRequestedArgs) {
-                lastRequestedArgs = null;
-                generateImage();
-            }
+    function drawMixedText(text, fontSize, fontFamily, tl, br, emotionCfg) {
+        const [x1, y1] = tl;
+        const [x2, y2] = br;
+        const w = x2 - x1;
+        const h = y2 - y1;
+        const segments = parseColorSegments(text, emotionCfg);
+        ctx.font = `${fontSize}px ${fontFamily}`;
+        const lineHeight = fontSize * 1.2;
+        const lines = wrapText(segments, fontSize, w, ctx, fontFamily);
+        const totalHeight = lines.length * lineHeight;
+        const yStart = y1 + (h - totalHeight) / 2;
+        const strokeEnabled = emotionCfg.TEXT_STROKE_ENABLED || false;
+        const strokeColor = emotionCfg.TEXT_STROKE_COLOR || '#ffffff';
+        const strokeWidth = Math.max(2, Math.round(fontSize / 12));
+        lines.forEach((line, i) => {
+            let x = x1;
+            const y = yStart + i * lineHeight;
+            const lw = line.reduce((s, seg) => s + ctx.measureText(seg.text).width, 0);
+            x += (w - lw) / 2;
+            line.forEach(seg => {
+                if (strokeEnabled) {
+                    ctx.lineWidth = strokeWidth;
+                    ctx.strokeStyle = strokeColor;
+                    ctx.strokeText(seg.text, x, y);
+                }
+                ctx.fillStyle = seg.color;
+                ctx.fillText(seg.text, x, y);
+                x += ctx.measureText(seg.text).width;
+            });
         });
-    }
-
-    function generateImage() {
-        if (!loadComplete) return;
-        const text = document.getElementById('textInput').value.trim();
-        const { config: emotionCfg } = getEmotionCfg(currentEmotion);
-        const currentToken = ++textRenderToken;
-        measureCache.clear();
-        drawBaseImage();
-        if (gifState.frames) {
-            drawGifFrame();
-        } else if (uploadedImage) {
-            pasteImageAuto(uploadedImage);
-        } else if (text) {
-            drawText(text, currentFontSize, emotionCfg, currentToken);
-            return;
-        }
-        if (emotionCfg.USE_BASE_OVERLAY && overlayImage.complete) ctx.drawImage(overlayImage, 0, 0);
     }
 
     function drawText(text, fontSize, emotionCfg, token) {
@@ -582,6 +672,43 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         if (currentLine.length) lines.push(currentLine);
         return lines;
+    }
+
+    function requestGenerateImage() {
+        lastRequestedArgs = true;
+        if (rafPending) return;
+        rafPending = true;
+        requestAnimationFrame(() => {
+            rafPending = false;
+            if (lastRequestedArgs) {
+                lastRequestedArgs = null;
+                generateImage();
+            }
+        });
+    }
+
+    function generateImage() {
+        if (!loadComplete) return;
+        const text = document.getElementById('textInput').value.trim();
+        const { config: emotionCfg } = getEmotionCfg(currentEmotion);
+        const currentToken = ++textRenderToken;
+        measureCache.clear();
+        drawBaseImage();
+        if (gifState.frames && text) {
+            drawMixedGif(text, currentFontSize, emotionCfg, currentToken);
+            return;
+        } else if (gifState.frames) {
+            drawGifFrame();
+        } else if (uploadedImage && text) {
+            drawMixedLayout(uploadedImage, text, currentFontSize, emotionCfg, currentToken);
+            return;
+        } else if (uploadedImage) {
+            drawImage(uploadedImage);
+        } else if (text) {
+            drawText(text, currentFontSize, emotionCfg, currentToken);
+            return;
+        }
+        if (emotionCfg.USE_BASE_OVERLAY && overlayImage.complete) ctx.drawImage(overlayImage, 0, 0);
     }
 
     function setEmotion(emotion) {
