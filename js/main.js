@@ -285,6 +285,26 @@ document.addEventListener('DOMContentLoaded', () => {
         return { x1, y1, x2, y2 };
     }
 
+    function calcMixedLayout(img, box) {
+        const { x1, y1, x2, y2 } = box;
+        const regionWidth = x2 - x1;
+        const regionHeight = y2 - y1;
+        const spacing = 10;
+        const isVertical = img.height * (regionWidth / regionHeight) > img.width;
+        let imgBox = {};
+        let textBox = {};
+        if (isVertical) {
+            const half = (regionWidth - spacing) / 2;
+            imgBox = { x1, y1, x2: x1 + half, y2 };
+            textBox = { x1: x1 + half + spacing, y1, x2, y2 };
+        } else {
+            const textHeight = Math.min(regionHeight / 2, 100);
+            imgBox = { x1, y1, x2, y2: y1 + (regionHeight - textHeight) };
+            textBox = { x1, y1: imgBox.y2 + spacing, x2, y2 };
+        }
+        return { imgBox: imgBox, textBox: textBox };
+    }
+
     function drawFittedImage(img, box) {
         const { x1, y1, x2, y2 } = box;
         const maxWidth = x2 - x1;
@@ -345,22 +365,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (token !== textRenderToken) return;
             const finalFont = isLoaded ? fontFamily : '';
             const box = getBoxCoordinates();
-            const { x1, y1, x2, y2 } = box;
-            const regionWidth = x2 - x1;
-            const regionHeight = y2 - y1;
-            const spacing = 10;
-            const isVertical = img.height * (regionWidth / regionHeight) > img.width;
-            let imgBox = {};
-            let textBox = {};
-            if (isVertical) {
-                const half = (regionWidth - spacing) / 2;
-                imgBox = { x1, y1, x2: x1 + half, y2 };
-                textBox = { x1: x1 + half + spacing, y1, x2, y2 };
-            } else {
-                const textHeight = Math.min(regionHeight / 2, 100);
-                imgBox = { x1, y1, x2, y2: y1 + (regionHeight - textHeight) };
-                textBox = { x1, y1: imgBox.y2 + spacing, x2, y2 };
-            }
+            const { imgBox, textBox } = calcMixedLayout(img, box);
             drawFittedImage(img, imgBox);
             drawTextBlock(text, fontSize, finalFont, textBox, emotionCfg);
             if (emotionCfg.USE_BASE_OVERLAY && overlayImage.complete) ctx.drawImage(overlayImage, 0, 0);
@@ -414,17 +419,42 @@ document.addEventListener('DOMContentLoaded', () => {
                 workerScript: 'js/gif/gif.worker.js'
             });
             const text = document.getElementById('textInput').value.trim();
-            const token = ++textRenderToken;
             const originalIndex = gifState.currentIndex;
-            const emotionCfg = getEmotionCfg(currentEmotion).config;
+            const { config: emotionCfg } = getEmotionCfg(currentEmotion);
+            const fontFamily = config.FONT_FILE[currentFont].family;
             try {
+                await checkFontLoaded(fontFamily, currentFontSize, text);
+                const finalFont = fontFamily;
+                const box = getBoxCoordinates();
+                let imgBox = box;
+                let textBox = box;
+                if (text && gifState.frames.length) {
+                    const firstFrame = gifState.frames[0].bitmap;
+                    const layout = calcMixedLayout(firstFrame, box);
+                    imgBox = layout.imgBox;
+                    textBox = layout.textBox;
+                }
+                const baseFrameCanvas = document.createElement('canvas');
+                const baseFrameCtx = baseFrameCanvas.getContext('2d');
+                baseFrameCanvas.width = canvas.width;
+                baseFrameCanvas.height = canvas.height;
+                const originalCtx = ctx;
+                ctx = baseFrameCtx;
+                drawBaseImage();
+                if (text) {
+                    measureCache.clear();
+                    drawTextBlock(text, currentFontSize, finalFont, textBox, emotionCfg);
+                }
+                if (emotionCfg.USE_BASE_OVERLAY && overlayImage.complete) {
+                    ctx.drawImage(overlayImage, 0, 0);
+                }
+                ctx = originalCtx;
                 for (let i = 0; i < gifState.frames.length; i++) {
                     gifState.currentIndex = i;
                     const frame = gifState.frames[i];
-                    text
-                        ? layoutMixedContent(frame.bitmap, text, currentFontSize, emotionCfg, token)
-                        : drawFittedImage(frame.bitmap, getBoxCoordinates());
-                    if (emotionCfg.USE_BASE_OVERLAY && overlayImage.complete) ctx.drawImage(overlayImage, 0, 0);
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    ctx.drawImage(baseFrameCanvas, 0, 0);
+                    drawFittedImage(frame.bitmap, imgBox);
                     gif.addFrame(canvas, {
                         copy: true,
                         delay: frame.delay || 100
