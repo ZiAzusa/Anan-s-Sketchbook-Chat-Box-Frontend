@@ -363,6 +363,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             drawFittedImage(img, imgBox);
             drawTextBlock(text, fontSize, finalFont, textBox, emotionCfg);
+            if (emotionCfg.USE_BASE_OVERLAY && overlayImage.complete) ctx.drawImage(overlayImage, 0, 0);
         });
     }
 
@@ -454,6 +455,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const finalFont = isLoaded ? fontFamily : '';
             const box = getBoxCoordinates();
             drawTextBlock(text, fontSize, finalFont, box, emotionCfg);
+            if (emotionCfg.USE_BASE_OVERLAY && overlayImage.complete) ctx.drawImage(overlayImage, 0, 0);
         });
     }
 
@@ -591,14 +593,15 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (gifState.frames) {
             const frame = gifState.frames[gifState.currentIndex];
             drawFittedImage(frame.bitmap, getBoxCoordinates());
+            if (emotionCfg.USE_BASE_OVERLAY && overlayImage.complete) ctx.drawImage(overlayImage, 0, 0);
         } else if (uploadedImage && text) {
             layoutMixedContent(uploadedImage, text, currentFontSize, emotionCfg, token);
         } else if (uploadedImage) {
             drawFittedImage(uploadedImage, getBoxCoordinates());
+            if (emotionCfg.USE_BASE_OVERLAY && overlayImage.complete) ctx.drawImage(overlayImage, 0, 0);
         } else if (text) {
             drawText(text, currentFontSize, emotionCfg, token);
         }
-        if (emotionCfg.USE_BASE_OVERLAY && overlayImage.complete) ctx.drawImage(overlayImage, 0, 0);
     }
 
     function setEmotion(emotion) {
