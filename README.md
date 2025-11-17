@@ -2,8 +2,8 @@
 
 [![License](https://img.shields.io/github/license/ZiAzusa/nonebot_plugin_anans_sketchbook)](LICENSE)
 [![JavaScript Version](https://img.shields.io/badge/JavaScript-ES2017-yellow)](https://developer.mozilla.org/)
-[![Chrome](https://img.shields.io/badge/Chrome-56%2B-blue)](https://www.google.com/chrome/)
-[![Firefox](https://img.shields.io/badge/Firefox-58%2B-orange)](https://www.firefox.com/)
+[![Chrome](https://img.shields.io/badge/Chrome-60%2B-blue)](https://www.google.com/chrome/)
+[![Firefox](https://img.shields.io/badge/Firefox-55%2B-orange)](https://www.firefox.com/)
 [![EdgeZ(Chromium)](https://img.shields.io/badge/Edge-79%2B-lightgreen)](https://www.microsoft.com/edge/)
 [![Safari](https://img.shields.io/badge/Safari-11.1%2B-lightblue)](https://www.apple.com/safari/)
 

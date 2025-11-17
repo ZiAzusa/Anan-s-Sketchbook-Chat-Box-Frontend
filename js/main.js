@@ -131,7 +131,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const button = document.createElement('button');
             button.dataset.emotion = emotion;
             button.textContent = emotion;
-            button.classList.toggle('active', emotion === currentEmotion);
+            emotion === currentEmotion ? button.classList.add('active') : button.classList.remove('active');
             button.addEventListener('click', (e) => setEmotion(e.target.dataset.emotion));
             emotionButtonsContainer.appendChild(button);
         });
@@ -145,7 +145,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const button = document.createElement('button');
             button.dataset.font = fontKey;
             button.textContent = fontInfo.displayText;
-            button.classList.toggle('active', fontKey === currentFont);
+            fontKey === currentFont ? button.classList.add('active') : button.classList.remove('active');
             button.addEventListener('click', (e) => setFont(e.target.dataset.font));
             fontButtonsContainer.appendChild(button);
         });
@@ -472,7 +472,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function drawBaseImage() {
-        if (!loadComplete || !(baseImages[currentEmotion] && baseImages[currentEmotion].complete)) return;
+        if (!loadComplete) return;
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         ctx.drawImage(baseImages[currentEmotion], 0, 0);
     }
@@ -637,7 +637,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function setEmotion(emotion) {
         if (!loadComplete) return;
         currentEmotion = emotion;
-        document.querySelectorAll('.emotion-buttons button').forEach(btn => btn.classList.toggle('active', btn.dataset.emotion === emotion));
+        document.querySelectorAll('.emotion-buttons button').forEach(btn => btn.dataset.emotion === emotion ? btn.classList.add('active') : btn.classList.remove('active'));
         canvas.width = baseImages[emotion].width;
         canvas.height = baseImages[emotion].height;
         requestGenerateImage();
@@ -646,7 +646,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function setFont(font) {
         if (!loadComplete) return;
         currentFont = font;
-        document.querySelectorAll('.font-buttons button').forEach(btn => btn.classList.toggle('active', btn.dataset.font === font));
+        document.querySelectorAll('.font-buttons button').forEach(btn => btn.dataset.font === font ? btn.classList.add('active') : btn.classList.remove('active'));
         requestGenerateImage();
     }
 
@@ -675,7 +675,19 @@ document.addEventListener('DOMContentLoaded', () => {
                     const pixels = new Uint8Array(gifReader.width * gifReader.height * 4);
                     gifReader.decodeAndBlitFrameRGBA(i, pixels);
                     const imgData = new ImageData(new Uint8ClampedArray(pixels.buffer), gifReader.width, gifReader.height);
-                    const bitmap = await createImageBitmap(imgData);
+                    let bitmap;
+                    try {
+                        bitmap = await createImageBitmap(imgData);
+                    } catch (err) {
+                        let tmpCanvas = null;
+                        tmpCanvas = document.createElement('canvas');
+                        tmpCanvas.width = gifReader.width;
+                        tmpCanvas.height = gifReader.height;
+                        const tmpCtx = tmpCanvas.getContext('2d');
+                        tmpCtx.putImageData(imgData, 0, 0);
+                        bitmap = await createImageBitmap(tmpCanvas);
+                        tmpCanvas.remove();
+                    }
                     frames.push({
                         bitmap,
                         delay: (info.delay > 0 ? info.delay : 10) * 10,
@@ -731,48 +743,18 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function copyCanvasToClipboard() {
-        if (!loadComplete || !(baseImages[currentEmotion] && baseImages[currentEmotion].complete)) return;
+        if (!loadComplete) return;
+        if (!navigator.clipboard) return;
         const dataURL = canvas.toDataURL('image/png');
-        try {
-            const blob = dataURLToBlob(dataURL);
-            navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })])
-            .then(() => showNotification(gifState.frames ? "已复制当前帧到剪贴板" : '已复制图片到剪贴板'))
-            .catch(err => {
-                const tmpImg = new Image();
-                tmpImg.crossOrigin = 'anonymous';
-                tmpImg.src = dataURL;
-                tmpImg.onload = () => {
-                    const tmpCanvas = document.createElement('canvas');
-                    Object.assign(tmpCanvas, { width: canvas.width, height: canvas.height });
-                    const tmpCtx = tmpCanvas.getContext('2d');
-                    tmpCtx.drawImage(tmpImg, 0, 0);
-                    tmpCanvas.style.cssText = 'position:absolute;left:-9999px;top:-9999px;opacity:0;pointer-events:none;';
-                    document.body.appendChild(tmpCanvas);
-                    try {
-                        const selection = window.getSelection();
-                        const range = document.createRange();
-                        range.selectNodeContents(tmpCanvas);
-                        selection.removeAllRanges();
-                        selection.addRange(range);
-                        document.execCommand('copy') 
-                        ? showNotification(gifState.frames ? "已复制当前帧到剪贴板" : '已复制图片到剪贴板')
-                        : showNotification(`复制失败: ${err.message || String(err)}`, 'error');
-                    } catch (err2) {
-                        showNotification(`复制失败: ${err2.message || String(err2)}`, 'error');
-                    } finally {
-                        window.getSelection().removeAllRanges();
-                        document.body.removeChild(tmpCanvas);
-                    }
-                };
-                tmpImg.onerror = () => showNotification('复制失败：图片加载异常', 'error');
-            });
-        } catch (err) {
-            showNotification(`复制失败: ${err}`, 'error')
-        }
+        const blob = dataURLToBlob(dataURL);
+        navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })])
+        .then(() => showNotification(gifState.frames ? "已复制当前帧到剪贴板" : '已复制图片到剪贴板'))
+        .catch(err => showNotification(`复制失败: ${err}`, 'error'));
     }
 
     function pauseClipboardToCanvas() {
         if (!loadComplete) return;
+        if (!navigator.clipboard) return;
         navigator.clipboard.read()
         .then(async clipboardData => {
             if (clipboardData.length <= 0) return;
@@ -821,6 +803,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function init() {
         disableControls();
+        if (!navigator.clipboard) document.querySelector(".action-buttons .hint").remove();
         const fontSizeCtrl = document.getElementById('fontSize');
         const fontSizeValue = document.getElementById('fontSizeValue');
         progressContainer.style.display = 'block';
