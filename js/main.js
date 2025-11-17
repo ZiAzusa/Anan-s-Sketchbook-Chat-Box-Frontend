@@ -122,7 +122,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const gap = 8;
         const totalGap = gap * (perRowCount - 1);
         const buttonWidth = `calc((100% - ${totalGap}px) / ${perRowCount})`;
-        buttons.forEach(button => button.style.width = buttonWidth);
+        buttons.forEach((button, index) => {
+            button.style.width = buttonWidth;
+            if (index % perRowCount === 0) button.style.marginLeft = '0';
+            if ((index + 1) % perRowCount === 0) button.style.marginRight = '0';
+        });
     }
 
     function generateEmotionButtons() {
