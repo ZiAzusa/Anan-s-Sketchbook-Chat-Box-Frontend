@@ -1,11 +1,11 @@
 # 安安的素描本聊天框 Frontend Ver.
 
 [![License](https://img.shields.io/github/license/ZiAzusa/nonebot_plugin_anans_sketchbook)](LICENSE)
-[![JavaScript Version](https://img.shields.io/badge/JavaScript-ES2020-yellow)](https://developer.mozilla.org/)
-[![Chrome](https://img.shields.io/badge/Chrome-79%2B-blue)](https://www.google.com/chrome/)
-[![Firefox](https://img.shields.io/badge/Firefox-75%2B-orange)](https://www.firefox.com/)
-[![Edge](https://img.shields.io/badge/Edge-79%2B-lightgreen)](https://www.microsoft.com/edge/)
-[![Safari](https://img.shields.io/badge/Safari-13.4%2B-lightblue)](https://www.apple.com/safari/)
+[![JavaScript Version](https://img.shields.io/badge/JavaScript-ES2017-yellow)](https://developer.mozilla.org/)
+[![Chrome](https://img.shields.io/badge/Chrome-56%2B-blue)](https://www.google.com/chrome/)
+[![Firefox](https://img.shields.io/badge/Firefox-58%2B-orange)](https://www.firefox.com/)
+[![EdgeZ(Chromium)](https://img.shields.io/badge/Edge-79%2B-lightgreen)](https://www.microsoft.com/edge/)
+[![Safari](https://img.shields.io/badge/Safari-11.1%2B-lightblue)](https://www.apple.com/safari/)
 
 
 本分支是 <a href="https://github.com/MarkCup-Official/Anan-s-Sketchbook-Chat-Box">MarkCup-Official/Anan-s-Sketchbook-Chat-Box</a> 的前端网页复现，避免了对Python及pywin32的依赖，但也缺失了Win32API带来的便捷。

@@ -30,7 +30,15 @@ header {
 header h1 {
     color: #8b5a2b;
     margin-bottom: 8px;
+    font-size: 1.7rem;
+}
+
+header h1 {
     font-size: clamp(1.5rem, 5vw, 2rem);
+}
+
+header p {
+    font-size: 0.9rem;
 }
 
 header p {
@@ -67,6 +75,10 @@ header p {
 h3 {
     color: #8b5a2b;
     margin: 15px 0 10px;
+    font-size: 1rem;
+}
+
+h3 {
     font-size: clamp(1rem, 3vw, 1.1em);
 }
 
@@ -86,8 +98,13 @@ h3 {
     padding: 8px 0;
     cursor: pointer;
     transition: all 0.3s;
-    font-size: clamp(0.85rem, 2vw, 0.95rem);
+    font-size: 0.9rem;
     min-width: 50px;
+}
+
+.emotion-buttons button,
+.font-buttons button {
+    font-size: clamp(0.85rem, 2vw, 0.95rem);
 }
 
 .emotion-buttons button:hover,
@@ -107,6 +124,10 @@ textarea {
     resize: vertical;
     font-family: inherit;
     margin-bottom: 10px;
+    font-size: 0.9rem;
+}
+
+textarea {
     font-size: clamp(0.9rem, 2vw, 1rem);
 }
 
@@ -115,6 +136,10 @@ textarea {
     align-items: center;
     gap: 10px;
     margin: 10px 0;
+    font-size: 0.85rem;
+}
+
+.font-size-control {
     font-size: clamp(0.85rem, 2vw, 0.9em);
 }
 
@@ -174,9 +199,13 @@ textarea {
 }
 
 .hint {
-    font-size: clamp(0.75rem, 2vw, 0.8em);
+    font-size: 0.75rem;
     color: #666;
     margin-top: 5px;
+}
+
+.hint {
+    font-size: clamp(0.75rem, 2vw, 0.8em);
 }
 
 .upload-btn {
@@ -187,6 +216,10 @@ textarea {
     padding: 8px 15px;
     cursor: pointer;
     margin-bottom: 10px;
+    font-size: 0.9rem;
+}
+
+.upload-btn {
     font-size: clamp(0.85rem, 2vw, 0.95rem);
 }
 
@@ -217,6 +250,10 @@ button {
     cursor: pointer;
     width: 100%;
     transition: background-color 0.3s;
+    font-size: 0.9rem;
+}
+
+button {
     font-size: clamp(0.9rem, 2vw, 1rem);
 }
 
@@ -255,8 +292,12 @@ footer {
     background-color: #f0e6d6;
     border-top: 1px solid #e0d6c6;
     margin-top: 15px;
-    font-size: clamp(0.75rem, 2vw, 0.85em);
+    font-size: 0.8rem;
     color: #666;
+}
+
+footer {
+    font-size: clamp(0.75rem, 2vw, 0.85em);
 }
 
 footer a {
@@ -327,8 +368,12 @@ footer a:hover {
     opacity: 0;
     transition: transform 0.3s ease, opacity 0.3s ease;
     z-index: 999;
-    font-size: clamp(0.85rem, 2vw, 0.95rem);
+    font-size: 0.9rem;
     color: white;
+}
+
+.notification {
+    font-size: clamp(0.85rem, 2vw, 0.95rem);
 }
 
 .notification.default {

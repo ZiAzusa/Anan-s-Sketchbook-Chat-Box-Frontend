@@ -199,10 +199,10 @@ document.addEventListener('DOMContentLoaded', () => {
     function preloadAllFonts() {
         const fontPromises = Object.keys(config.FONT_FILE).map(fontKey => {
             const { file: filePath } = config.FONT_FILE[fontKey];
-            const fileType = ((p) => p.endsWith('/')
-                ? 'folder' : p.endsWith('.css')
-                ? 'css' : ['.ttf', '.otf', '.woff', '.woff2'].includes(`.${p.split('.').pop()?.toLowerCase()}`)
-                ? 'font' : null
+            const fileType = ((p) => p.endsWith('/') ? 'folder'
+            : p.endsWith('.css') ? 'css'
+            : ['.ttf', '.otf', '.woff', '.woff2'].includes(`.${(p.split('.').pop() || '').toLowerCase()}`) ? 'font'
+            : null
             )(filePath);
             if (fileType == 'folder' || fileType == 'css') {
                 const cssHref = fileType === 'folder' ? `${filePath.replace(/\/$/, '')}/result.css` : filePath;
@@ -214,7 +214,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         loadedResources++;
                         updateProgress();
                         resolve();
-                    };
+                    }
                     document.head.appendChild(link);
                 });
             }
@@ -256,7 +256,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function showNotification(message, type = 'default') {
-        document.querySelector('.notification')?.remove();
+        ((el) => el && el.remove())(document.querySelector('.notification'));
         const notification = document.createElement('div');
         notification.className = `notification ${type}`;
         notification.textContent = message;
@@ -472,7 +472,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function drawBaseImage() {
-        if (!loadComplete || !baseImages[currentEmotion]?.complete) return;
+        if (!loadComplete || !(baseImages[currentEmotion] && baseImages[currentEmotion].complete)) return;
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         ctx.drawImage(baseImages[currentEmotion], 0, 0);
     }
@@ -528,7 +528,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (/[\u{1F300}-\u{1FAFF}]/u.test(text)) w += text.length * fontSize * 0.05;
             measureCache.set(text, w);
             return w;
-        };
+        }
         for (const seg of segments) {
             const parts = seg.text.split('\n');
             for (let p = 0; p < parts.length; p++) {
@@ -731,13 +731,44 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function copyCanvasToClipboard() {
-        if (!loadComplete || !baseImages[currentEmotion]?.complete) return;
+        if (!loadComplete || !(baseImages[currentEmotion] && baseImages[currentEmotion].complete)) return;
         const dataURL = canvas.toDataURL('image/png');
-        const blob = dataURLToBlob(dataURL);
-        const item = new ClipboardItem({ 'image/png': blob });
-        navigator.clipboard.write([item])
-        .then(() => showNotification(gifState.frames ? "已复制当前帧到剪贴板" : '已复制图片到剪贴板'))
-        .catch(err => showNotification(`复制失败: ${err}`, 'error'));
+        try {
+            const blob = dataURLToBlob(dataURL);
+            navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })])
+            .then(() => showNotification(gifState.frames ? "已复制当前帧到剪贴板" : '已复制图片到剪贴板'))
+            .catch(err => {
+                const tmpImg = new Image();
+                tmpImg.crossOrigin = 'anonymous';
+                tmpImg.src = dataURL;
+                tmpImg.onload = () => {
+                    const tmpCanvas = document.createElement('canvas');
+                    Object.assign(tmpCanvas, { width: canvas.width, height: canvas.height });
+                    const tmpCtx = tmpCanvas.getContext('2d');
+                    tmpCtx.drawImage(tmpImg, 0, 0);
+                    tmpCanvas.style.cssText = 'position:absolute;left:-9999px;top:-9999px;opacity:0;pointer-events:none;';
+                    document.body.appendChild(tmpCanvas);
+                    try {
+                        const selection = window.getSelection();
+                        const range = document.createRange();
+                        range.selectNodeContents(tmpCanvas);
+                        selection.removeAllRanges();
+                        selection.addRange(range);
+                        document.execCommand('copy') 
+                        ? showNotification(gifState.frames ? "已复制当前帧到剪贴板" : '已复制图片到剪贴板')
+                        : showNotification(`复制失败: ${err.message || String(err)}`, 'error');
+                    } catch (err2) {
+                        showNotification(`复制失败: ${err2.message || String(err2)}`, 'error');
+                    } finally {
+                        window.getSelection().removeAllRanges();
+                        document.body.removeChild(tmpCanvas);
+                    }
+                };
+                tmpImg.onerror = () => showNotification('复制失败：图片加载异常', 'error');
+            });
+        } catch (err) {
+            showNotification(`复制失败: ${err}`, 'error')
+        }
     }
 
     function pauseClipboardToCanvas() {
@@ -790,6 +821,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function init() {
         disableControls();
+        if (!Promise.allSettled || !Array.prototype.includes) {
+            const features = [];
+            if (!Promise.allSettled) features.push('Promise.allSettled');
+            if (!Array.prototype.includes) features.push('Array.prototype.includes');
+            const script = document.createElement('script');
+            script.src = `https://polyfill.io/v3/polyfill.min.js?features=${features.join(',')}`;
+            script.onload = script.onerror = (() => 0);
+            document.head.appendChild(script);
+        }
         const fontSizeCtrl = document.getElementById('fontSize');
         const fontSizeValue = document.getElementById('fontSizeValue');
         progressContainer.style.display = 'block';
