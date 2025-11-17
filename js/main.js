@@ -821,15 +821,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function init() {
         disableControls();
-        if (!Promise.allSettled || !Array.prototype.includes) {
-            const features = [];
-            if (!Promise.allSettled) features.push('Promise.allSettled');
-            if (!Array.prototype.includes) features.push('Array.prototype.includes');
-            const script = document.createElement('script');
-            script.src = `https://polyfill.io/v3/polyfill.min.js?features=${features.join(',')}`;
-            script.onload = script.onerror = (() => 0);
-            document.head.appendChild(script);
-        }
         const fontSizeCtrl = document.getElementById('fontSize');
         const fontSizeValue = document.getElementById('fontSizeValue');
         progressContainer.style.display = 'block';
